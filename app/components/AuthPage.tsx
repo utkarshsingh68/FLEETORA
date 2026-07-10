@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +19,7 @@ import {
   Truck,
   UserRound,
 } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 export type AuthVariant = "login" | "register" | "forgot";
 
@@ -57,8 +60,34 @@ function FieldIcon({ children }: { children: ReactNode }) {
 }
 
 function LoginForm() {
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) {
+      setFeedback("Supabase is not configured yet. Add the environment values and restart Fleetora.");
+      return;
+    }
+
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email") ?? "");
+    const password = String(data.get("password") ?? "");
+    setPending(true);
+    setFeedback(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setPending(false);
+
+    if (error) {
+      setFeedback(error.message);
+      return;
+    }
+
+    window.location.assign("/dashboard");
+  }
+
   return (
-    <form className="auth-form" method="post">
+    <form className="auth-form" onSubmit={handleSubmit}>
       <div className="auth-field-group">
         <label className="auth-label" htmlFor="auth-login-email">
           Work email
@@ -117,10 +146,12 @@ function LoginForm() {
         <span className="auth-check-copy">Keep me signed in on this device</span>
       </label>
 
-      <button className="auth-primary-button" type="submit">
-        <span className="auth-button-label">Sign in to Fleetora</span>
+      <button className="auth-primary-button" type="submit" disabled={pending}>
+        <span className="auth-button-label">{pending ? "Signing in…" : "Sign in to Fleetora"}</span>
         <ArrowRight className="auth-button-icon" size={18} strokeWidth={2} />
       </button>
+
+      {feedback && <p className="auth-field-hint" role="status">{feedback}</p>}
 
       <div className="auth-divider" role="separator">
         <span className="auth-divider-line" />
@@ -137,8 +168,50 @@ function LoginForm() {
 }
 
 function RegisterForm() {
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) {
+      setFeedback("Supabase is not configured yet. Add the environment values and restart Fleetora.");
+      return;
+    }
+
+    const data = new FormData(event.currentTarget);
+    const name = String(data.get("name") ?? "");
+    const company = String(data.get("company") ?? "");
+    const email = String(data.get("email") ?? "");
+    const password = String(data.get("password") ?? "");
+    setPending(true);
+    setFeedback(null);
+    const { data: authData, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name, company_name: company } },
+    });
+    setPending(false);
+
+    if (error) {
+      setFeedback(error.message);
+      return;
+    }
+
+    if (authData.session) {
+      const { error: companyError } = await supabase.rpc("bootstrap_company", { company_name: company });
+      if (companyError) {
+        setFeedback("Your account was created. Apply the Fleetora Supabase migration, then sign in to finish workspace setup.");
+        return;
+      }
+      window.location.assign("/dashboard");
+      return;
+    }
+
+    setFeedback("Account created. Check your email to confirm your address, then sign in to Fleetora.");
+  }
+
   return (
-    <form className="auth-form" method="post">
+    <form className="auth-form" onSubmit={handleSubmit}>
       <div className="auth-field-grid">
         <div className="auth-field-group">
           <label className="auth-label" htmlFor="auth-register-name">
@@ -250,17 +323,39 @@ function RegisterForm() {
         </span>
       </label>
 
-      <button className="auth-primary-button" type="submit">
-        <span className="auth-button-label">Create my workspace</span>
+      <button className="auth-primary-button" type="submit" disabled={pending}>
+        <span className="auth-button-label">{pending ? "Creating workspace…" : "Create my workspace"}</span>
         <ArrowRight className="auth-button-icon" size={18} strokeWidth={2} />
       </button>
+      {feedback && <p className="auth-field-hint" role="status">{feedback}</p>}
     </form>
   );
 }
 
 function ForgotForm() {
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) {
+      setFeedback("Supabase is not configured yet. Add the environment values and restart Fleetora.");
+      return;
+    }
+
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email") ?? "");
+    setPending(true);
+    setFeedback(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setPending(false);
+    setFeedback(error ? error.message : "If that email belongs to a Fleetora account, a secure reset link is on its way.");
+  }
+
   return (
-    <form className="auth-form" method="post">
+    <form className="auth-form" onSubmit={handleSubmit}>
       <div className="auth-recovery-note">
         <span className="auth-recovery-icon" aria-hidden="true">
           <KeyRound size={20} strokeWidth={1.8} />
@@ -291,10 +386,12 @@ function ForgotForm() {
         </div>
       </div>
 
-      <button className="auth-primary-button" type="submit">
-        <span className="auth-button-label">Send secure reset link</span>
+      <button className="auth-primary-button" type="submit" disabled={pending}>
+        <span className="auth-button-label">{pending ? "Sending link…" : "Send secure reset link"}</span>
         <ArrowRight className="auth-button-icon" size={18} strokeWidth={2} />
       </button>
+
+      {feedback && <p className="auth-field-hint" role="status">{feedback}</p>}
 
       <Link className="auth-back-link" href="/login">
         <ArrowLeft className="auth-back-icon" size={17} strokeWidth={2} />
