@@ -1,0 +1,16 @@
+packages:
+  - "."
+
+confirmModulesPurge: false
+strictDepBuilds: false
+onlyBuiltDependencies:
+  - "@tailwindcss/oxide"
+  - esbuild
+  - sharp
+  - unrs-resolver
+  - workerd
+allowBuilds:
+  esbuild: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
+  workerd: set this to true or false
