@@ -41,7 +41,19 @@ export default defineConfig(async () => {
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
   if (process.env.FLEETORA_SKIP_CLOUDFLARE === "1") {
-    return { plugins: [vinext(), sites()] };
+    const localOptimizeDeps = { noDiscovery: true, include: [] };
+    return {
+      // The sandboxed Windows preview can stall in Vite's native dependency
+      // optimizer. The app already ships standard ESM dependencies, so local
+      // previews can safely resolve them on demand instead.
+      optimizeDeps: localOptimizeDeps,
+      environments: {
+        client: { optimizeDeps: localOptimizeDeps },
+        rsc: { optimizeDeps: localOptimizeDeps },
+        ssr: { optimizeDeps: localOptimizeDeps },
+      },
+      plugins: [vinext(), sites()],
+    };
   }
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.

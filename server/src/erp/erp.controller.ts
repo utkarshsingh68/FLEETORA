@@ -1,11 +1,34 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard, Roles, RolesGuard } from '../auth/rbac';
+import { Roles, RolesGuard, SupabaseAuthGuard } from '../auth/rbac';
 import { ErpService } from './erp.service';
-@ApiTags('ERP') @ApiBearerAuth() @UseGuards(JwtAuthGuard, RolesGuard) @Controller()
+
+type FleetoraRequest = { user: { companyId: string; token: string } };
+
+@ApiTags('ERP')
+@ApiBearerAuth()
+@UseGuards(SupabaseAuthGuard, RolesGuard)
+@Controller()
 export class ErpController {
-  constructor(private erp: ErpService) {}
-  @Get('dashboard/kpis') dashboard(@Req() req: { user: { companyId: string } }) { return this.erp.dashboard(req.user.companyId); }
-  @Get('vehicles') @Roles('SUPER_ADMIN','COMPANY_ADMIN','DISPATCHER','FLEET_MANAGER','BRANCH_MANAGER') vehicles(@Req() req: { user: { companyId: string } }, @Query('page') page = '1', @Query('limit') limit = '25', @Query('search') search = '') { return this.erp.vehicles(req.user.companyId, Number(page), Number(limit), search); }
-  @Get('trips') trips(@Req() req: { user: { companyId: string } }, @Query('page') page = '1', @Query('limit') limit = '25', @Query('status') status?: string) { return this.erp.trips(req.user.companyId, Number(page), Number(limit), status); }
+  constructor(private readonly erp: ErpService) {}
+
+  @Get('dashboard/kpis')
+  dashboard(@Req() req: FleetoraRequest) { return this.erp.dashboard(req.user.companyId, req.user.token); }
+
+  @Get('vehicles')
+  vehicles(@Req() req: FleetoraRequest, @Query('limit') limit = '25') { return this.erp.vehicles(req.user.companyId, req.user.token, Number(limit)); }
+
+  @Post('vehicles')
+  @Roles('owner', 'admin', 'dispatcher')
+  createVehicle(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createVehicle(req.user.companyId, req.user.token, body); }
+
+  @Get('trips')
+  trips(@Req() req: FleetoraRequest, @Query('limit') limit = '25', @Query('status') status?: string) { return this.erp.trips(req.user.companyId, req.user.token, Number(limit), status); }
+
+  @Post('trips')
+  @Roles('owner', 'admin', 'dispatcher')
+  createTrip(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createTrip(req.user.companyId, req.user.token, body); }
+
+  @Get('customers')
+  customers(@Req() req: FleetoraRequest, @Query('limit') limit = '25') { return this.erp.customers(req.user.companyId, req.user.token, Number(limit)); }
 }

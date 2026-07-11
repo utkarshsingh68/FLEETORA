@@ -79,7 +79,11 @@ function LoginForm() {
     setPending(false);
 
     if (error) {
-      setFeedback(error.message);
+      setFeedback(
+        error.message.toLowerCase().includes("invalid login")
+          ? "We couldn’t sign you in. Check your email and password, then try again."
+          : error.message,
+      );
       return;
     }
 
@@ -151,7 +155,7 @@ function LoginForm() {
         <ArrowRight className="auth-button-icon" size={18} strokeWidth={2} />
       </button>
 
-      {feedback && <p className="auth-field-hint" role="status">{feedback}</p>}
+      {feedback && <p className="auth-alert" role="alert">{feedback}</p>}
 
       <div className="auth-divider" role="separator">
         <span className="auth-divider-line" />
@@ -169,11 +173,13 @@ function LoginForm() {
 
 function RegisterForm() {
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackKind, setFeedbackKind] = useState<"success" | "error">("error");
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase) {
+      setFeedbackKind("error");
       setFeedback("Supabase is not configured yet. Add the environment values and restart Fleetora.");
       return;
     }
@@ -193,6 +199,7 @@ function RegisterForm() {
     setPending(false);
 
     if (error) {
+      setFeedbackKind("error");
       setFeedback(error.message);
       return;
     }
@@ -200,6 +207,7 @@ function RegisterForm() {
     if (authData.session) {
       const { error: companyError } = await supabase.rpc("bootstrap_company", { company_name: company });
       if (companyError) {
+        setFeedbackKind("error");
         setFeedback("Your account was created. Apply the Fleetora Supabase migration, then sign in to finish workspace setup.");
         return;
       }
@@ -207,7 +215,8 @@ function RegisterForm() {
       return;
     }
 
-    setFeedback("Account created. Check your email to confirm your address, then sign in to Fleetora.");
+    setFeedbackKind("success");
+    setFeedback("Account created successfully. Check your inbox to confirm your email, then sign in to Fleetora.");
   }
 
   return (
@@ -327,7 +336,14 @@ function RegisterForm() {
         <span className="auth-button-label">{pending ? "Creating workspace…" : "Create my workspace"}</span>
         <ArrowRight className="auth-button-icon" size={18} strokeWidth={2} />
       </button>
-      {feedback && <p className="auth-field-hint" role="status">{feedback}</p>}
+      {feedback && (
+        <p
+          className={`auth-alert ${feedbackKind === "success" ? "auth-alert-success" : ""}`}
+          role={feedbackKind === "success" ? "status" : "alert"}
+        >
+          {feedback}
+        </p>
+      )}
     </form>
   );
 }

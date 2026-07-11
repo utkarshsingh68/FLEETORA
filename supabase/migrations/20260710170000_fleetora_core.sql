@@ -211,6 +211,12 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Backfill profiles for accounts created before this migration was applied.
+insert into public.profiles (id, full_name)
+select id, coalesce(raw_user_meta_data ->> 'full_name', '')
+from auth.users
+on conflict (id) do nothing;
+
 create or replace function public.is_company_member(target_company_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
@@ -236,6 +242,25 @@ end;
 $$;
 
 grant execute on function public.bootstrap_company(text) to authenticated;
+
+-- Bootstrap a workspace for existing confirmed accounts that registered before
+-- the database migration existed. New registrations use bootstrap_company().
+do $$
+declare
+  existing_user record;
+  new_company_id uuid;
+begin
+  for existing_user in
+    select u.id, coalesce(nullif(trim(u.raw_user_meta_data ->> 'company_name'), ''), 'My Fleetora Company') as company_name
+    from auth.users u
+    where not exists (select 1 from public.company_members cm where cm.user_id = u.id)
+  loop
+    insert into public.companies (name) values (existing_user.company_name) returning id into new_company_id;
+    insert into public.company_members (company_id, user_id, role)
+    values (new_company_id, existing_user.id, 'owner');
+  end loop;
+end;
+$$;
 
 create trigger profiles_updated_at before update on public.profiles for each row execute procedure public.set_updated_at();
 create trigger companies_updated_at before update on public.companies for each row execute procedure public.set_updated_at();
