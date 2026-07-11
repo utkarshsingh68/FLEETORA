@@ -1,0 +1,269 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+enum Role { SUPER_ADMIN COMPANY_ADMIN DISPATCHER FLEET_MANAGER ACCOUNTANT BRANCH_MANAGER DRIVER CUSTOMER VENDOR BROKER }
+enum VehicleStatus { AVAILABLE ON_TRIP MAINTENANCE INACTIVE }
+enum TripStatus { PENDING SCHEDULED LOADING IN_TRANSIT DELIVERED DELAYED CANCELLED }
+enum InvoiceStatus { DRAFT SENT PARTIAL PAID OVERDUE VOID }
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique
+  passwordHash String @map("password_hash")
+  fullName String @map("full_name")
+  phone String?
+  memberships CompanyMembership[]
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@map("users")
+}
+
+model Company {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  legalName String? @map("legal_name")
+  gstin String? @unique
+  timezone String @default("Asia/Kolkata")
+  memberships CompanyMembership[]
+  branches Branch[]
+  vehicles Vehicle[]
+  drivers Driver[]
+  customers Customer[]
+  trips Trip[]
+  invoices Invoice[]
+  fuelEntries FuelEntry[]
+  maintenance MaintenanceRecord[]
+  documents Document[]
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@map("companies")
+}
+
+model CompanyMembership {
+  companyId String @db.Uuid @map("company_id")
+  userId String @db.Uuid @map("user_id")
+  role Role
+  branchId String? @db.Uuid @map("branch_id")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@id([companyId, userId])
+  @@index([userId])
+  @@map("company_memberships")
+}
+
+model Branch {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  code String
+  name String
+  city String
+  state String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members CompanyMembership[]
+  vehicles Vehicle[]
+  trips Trip[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@unique([companyId, code])
+  @@index([companyId, deletedAt])
+  @@map("branches")
+}
+
+model Vehicle {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  branchId String? @db.Uuid @map("branch_id")
+  registrationNumber String @map("registration_number")
+  category String
+  makeModel String @map("make_model")
+  capacityTonnes Decimal? @db.Decimal(8,2) @map("capacity_tonnes")
+  status VehicleStatus @default(AVAILABLE)
+  currentLocation String? @map("current_location")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id])
+  trips Trip[]
+  fuelEntries FuelEntry[]
+  maintenance MaintenanceRecord[]
+  documents Document[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@unique([companyId, registrationNumber])
+  @@index([companyId, status, deletedAt])
+  @@map("vehicles")
+}
+
+model Driver {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  fullName String @map("full_name")
+  phone String
+  aadhaarMasked String? @map("aadhaar_masked")
+  panMasked String? @map("pan_masked")
+  licenseNumber String @map("license_number")
+  licenseExpiry DateTime? @db.Date @map("license_expiry")
+  status String @default("AVAILABLE")
+  salary Decimal? @db.Decimal(12,2)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips Trip[]
+  documents Document[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@unique([companyId, licenseNumber])
+  @@index([companyId, status, deletedAt])
+  @@map("drivers")
+}
+
+model Customer {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  name String
+  gstin String?
+  contactName String? @map("contact_name")
+  email String?
+  phone String?
+  creditLimit Decimal @default(0) @db.Decimal(14,2) @map("credit_limit")
+  paymentTermsDays Int @default(30) @map("payment_terms_days")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips Trip[]
+  invoices Invoice[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@index([companyId, name, deletedAt])
+  @@map("customers")
+}
+
+model Trip {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  branchId String? @db.Uuid @map("branch_id")
+  tripNumber String @map("trip_number")
+  customerId String? @db.Uuid @map("customer_id")
+  vehicleId String? @db.Uuid @map("vehicle_id")
+  driverId String? @db.Uuid @map("driver_id")
+  origin String
+  destination String
+  status TripStatus @default(PENDING)
+  freightAmount Decimal @default(0) @db.Decimal(14,2) @map("freight_amount")
+  expenseAmount Decimal @default(0) @db.Decimal(14,2) @map("expense_amount")
+  scheduledStartAt DateTime? @map("scheduled_start_at")
+  scheduledEndAt DateTime? @map("scheduled_end_at")
+  actualStartAt DateTime? @map("actual_start_at")
+  actualEndAt DateTime? @map("actual_end_at")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  driver Driver? @relation(fields: [driverId], references: [id])
+  invoices Invoice[]
+  fuelEntries FuelEntry[]
+  documents Document[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@unique([companyId, tripNumber])
+  @@index([companyId, status, scheduledStartAt, deletedAt])
+  @@map("trips")
+}
+
+model Invoice {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  customerId String? @db.Uuid @map("customer_id")
+  tripId String? @db.Uuid @map("trip_id")
+  invoiceNumber String @map("invoice_number")
+  amount Decimal @db.Decimal(14,2)
+  issueDate DateTime @db.Date @map("issue_date")
+  dueDate DateTime? @db.Date @map("due_date")
+  status InvoiceStatus @default(DRAFT)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  trip Trip? @relation(fields: [tripId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId, status, dueDate, deletedAt])
+  @@map("invoices")
+}
+
+model FuelEntry {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  vehicleId String? @db.Uuid @map("vehicle_id")
+  tripId String? @db.Uuid @map("trip_id")
+  litres Decimal @db.Decimal(10,2)
+  amount Decimal @db.Decimal(14,2)
+  odometerKm Decimal? @db.Decimal(12,1) @map("odometer_km")
+  filledAt DateTime @default(now()) @map("filled_at")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  trip Trip? @relation(fields: [tripId], references: [id])
+  @@index([companyId, filledAt])
+  @@map("fuel_entries")
+}
+
+model MaintenanceRecord {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  vehicleId String @db.Uuid @map("vehicle_id")
+  type String
+  status String
+  dueOn DateTime? @db.Date @map("due_on")
+  completedOn DateTime? @db.Date @map("completed_on")
+  cost Decimal @default(0) @db.Decimal(14,2)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@index([companyId, status, dueOn, deletedAt])
+  @@map("maintenance_records")
+}
+
+model Document {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  vehicleId String? @db.Uuid @map("vehicle_id")
+  driverId String? @db.Uuid @map("driver_id")
+  tripId String? @db.Uuid @map("trip_id")
+  type String
+  version Int @default(1)
+  storageKey String @map("storage_key")
+  expiresOn DateTime? @db.Date @map("expires_on")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  driver Driver? @relation(fields: [driverId], references: [id])
+  trip Trip? @relation(fields: [tripId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@index([companyId, type, expiresOn, deletedAt])
+  @@map("documents")
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @db.Uuid @map("company_id")
+  userId String? @db.Uuid @map("user_id")
+  action String
+  resourceType String @map("resource_type")
+  resourceId String? @map("resource_id")
+  before Json?
+  after Json?
+  ipAddress String? @map("ip_address")
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([companyId, resourceType, createdAt])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}

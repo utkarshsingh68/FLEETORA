@@ -2,6 +2,7 @@ packages:
   - "."
 
 confirmModulesPurge: false
+nodeLinker: hoisted
 strictDepBuilds: false
 onlyBuiltDependencies:
   - "@tailwindcss/oxide"

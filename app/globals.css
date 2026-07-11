@@ -642,3 +642,24 @@ a.data-table-primary { color: #2563eb; }
   .module-kpis { grid-template-columns: 1fr; }
   .module-kpi-copy small { white-space: normal; }
 }
+
+/* Enterprise ERP extensions */
+.enterprise-table { min-width: 860px; }
+.enterprise-pagination { align-items: center; border-top: 1px solid var(--app-line); color: var(--app-muted); display: flex; font-size: 8.5px; justify-content: space-between; padding: 10px 16px; }
+.enterprise-pagination > div { display: flex; gap: 6px; }
+.enterprise-pagination button { align-items: center; background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 7px; color: var(--app-ink); display: inline-flex; font-size: 8px; gap: 4px; height: 29px; padding: 0 8px; }
+.enterprise-pagination button:disabled { cursor: not-allowed; opacity: .42; }
+.enterprise-create-dialog { background: var(--app-surface-raised); border: 1px solid var(--app-line); border-radius: 15px; box-shadow: 0 30px 80px rgba(8,15,30,.28); display: grid; gap: 16px; left: 50%; padding: 22px; position: fixed; top: 50%; transform: translate(-50%,-50%); width: min(440px,calc(100vw - 28px)); z-index: 101; }
+.enterprise-dialog-head { align-items: flex-start; display: flex; justify-content: space-between; }
+.enterprise-dialog-head span { color: #2563eb; font-size: 8px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.enterprise-dialog-head h2 { font-size: 19px; letter-spacing: -.035em; margin: 5px 0 0; }
+.enterprise-dialog-head button { align-items: center; background: transparent; border: 0; border-radius: 7px; color: var(--app-muted); display: inline-flex; height: 32px; justify-content: center; width: 32px; }
+.enterprise-dialog-head button:hover { background: var(--app-bg); }
+.enterprise-create-dialog > label { display: grid; gap: 6px; }
+.enterprise-create-dialog > label > span { font-size: 9px; font-weight: 650; }
+.enterprise-create-dialog input { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 9px; font-size: 10px; height: 40px; outline: none; padding: 0 11px; }
+.enterprise-create-dialog input:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+.status-healthy,.status-moving,.status-signed,.status-live,.status-success,.status-allocated,.status-reconciled,.status-protected { background:#ecfdf5;color:#047857; }
+.status-low-balance,.status-review,.status-approval,.status-pod-pending,.status-partial,.status-draft,.status-retry,.status-rotate-soon,.status-weak,.status-warranty-claim { background:#fffbeb;color:#b45309; }
+.status-offline,.status-on-hold,.status-parts-waiting,.status-retread-due,.status-scrap-review,.status-replace,.status-rejected,.status-high { background:#fef2f2;color:#b91c1c; }
+.status-quality-check,.status-medium,.status-scheduled { background:#f5f3ff;color:#6d28d9; }

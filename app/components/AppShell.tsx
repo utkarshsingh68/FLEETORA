@@ -6,6 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  Activity,
+  BarChart3,
+  BatteryCharging,
   Bell,
   BookOpenCheck,
   Building2,
@@ -14,12 +17,16 @@ import {
   CircleDollarSign,
   Command,
   CreditCard,
+  FileSignature,
   FileBarChart,
   FileCheck2,
   Fuel,
+  Gauge,
+  Handshake,
   Headphones,
   LayoutDashboard,
   Menu,
+  MapPinned,
   Moon,
   Plus,
   ReceiptIndianRupee,
@@ -28,6 +35,7 @@ import {
   ShieldCheck,
   Sun,
   Truck,
+  TicketCheck,
   UserRoundCheck,
   UsersRound,
   Warehouse,
@@ -39,6 +47,7 @@ import type { LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DashboardView } from "./DashboardView";
 import { ModuleView } from "./ModuleView";
+import { EnterpriseModuleView, enterpriseRoutes } from "./EnterpriseModuleView";
 
 type AppShellProps = { route: string };
 
@@ -54,27 +63,59 @@ const navigation: { label: string; items: NavItem[] }[] = [
     label: "Command center",
     items: [
       { label: "Dashboard", route: "dashboard", icon: LayoutDashboard },
+      { label: "Trips", route: "trips", icon: Zap, badge: "24" },
+      { label: "GPS Tracking", route: "gps", icon: MapPinned, badge: "Live" },
+    ],
+  },
+  {
+    label: "Fleet operations",
+    items: [
       { label: "Fleet", route: "fleet", icon: Truck },
       { label: "Drivers", route: "drivers", icon: UserRoundCheck },
-      { label: "Trips", route: "trips", icon: Zap, badge: "24" },
-      { label: "Customers", route: "customers", icon: UsersRound },
-      { label: "Vendors", route: "vendors", icon: Warehouse },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { label: "Finance", route: "finance", icon: CircleDollarSign },
-      { label: "Fuel", route: "fuel", icon: Fuel },
+      { label: "FASTag", route: "fastag", icon: TicketCheck, badge: "6" },
+      { label: "Workshop", route: "workshop", icon: Wrench },
+      { label: "Tyres", route: "tyres", icon: Gauge, badge: "18" },
+      { label: "Batteries", route: "batteries", icon: BatteryCharging },
       { label: "Maintenance", route: "maintenance", icon: Wrench },
       { label: "Documents", route: "documents", icon: FileCheck2, badge: "7" },
-      { label: "Reports", route: "reports", icon: FileBarChart },
     ],
   },
   {
-    label: "Workspace",
+    label: "Commercial",
     items: [
+      { label: "Customers", route: "customers", icon: UsersRound },
+      { label: "Brokers", route: "brokers", icon: Handshake },
+      { label: "Vendors", route: "vendors", icon: Warehouse },
+      { label: "Digital LR", route: "digital-lr", icon: FileSignature },
+      { label: "Invoices", route: "invoices", icon: ReceiptIndianRupee },
+    ],
+  },
+  {
+    label: "Finance & cost",
+    items: [
+      { label: "Finance", route: "finance", icon: CircleDollarSign },
+      { label: "Accounting", route: "accounting", icon: BookOpenCheck },
+      { label: "Expenses", route: "expenses", icon: CreditCard },
+      { label: "Income", route: "income", icon: CircleDollarSign },
+      { label: "Fuel", route: "fuel", icon: Fuel },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { label: "Reports", route: "reports", icon: FileBarChart },
+      { label: "Analytics", route: "analytics", icon: BarChart3 },
       { label: "Notifications", route: "notifications", icon: Bell, badge: "9" },
+      { label: "Audit Logs", route: "audit-logs", icon: ShieldCheck },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { label: "Companies", route: "companies", icon: Building2 },
+      { label: "Branches", route: "branches", icon: Warehouse },
+      { label: "Roles", route: "roles", icon: ShieldCheck },
+      { label: "Activity Logs", route: "activity-logs", icon: Activity },
       { label: "Settings", route: "settings", icon: Settings },
       { label: "Support", route: "support", icon: Headphones },
     ],
@@ -307,6 +348,8 @@ export function AppShell({ route }: AppShellProps) {
         <main className="app-content">
           {route === "dashboard" ? (
             <DashboardView onQuickAdd={() => setQuickOpen(true)} />
+          ) : enterpriseRoutes.has(route) ? (
+            <EnterpriseModuleView route={route} />
           ) : (
             <ModuleView route={route} />
           )}
