@@ -30,14 +30,17 @@ import {
 } from "lucide-react";
 import {
   ArcElement,
+  BarController,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
   Filler,
   Legend,
+  LineController,
   LinearScale,
   LineElement,
   PointElement,
+  DoughnutController,
   Tooltip,
   type ChartData,
   type ChartOptions,
@@ -59,6 +62,9 @@ import {
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  BarController,
+  LineController,
+  DoughnutController,
   BarElement,
   LineElement,
   PointElement,
