@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: fleetora-api-utkarsh
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm install --prefix server && npm run build --prefix server
+    startCommand: npm start --prefix server
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.23.1
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://fleetora-web-utkarsh.onrender.com
+
+  - type: web
+    name: fleetora-web-utkarsh
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: node scripts/local-preview.mjs
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.23.1
+      - key: NEXT_PUBLIC_API_URL
+        value: https://fleetora-api-utkarsh.onrender.com/api/v1
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false

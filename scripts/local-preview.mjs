@@ -5,8 +5,8 @@ import { spawn } from "node:child_process";
 
 const root = process.cwd();
 const assetsRoot = join(root, "dist", "client");
-const upstreamPort = 3001;
-const publicPort = 3000;
+const publicPort = Number(process.env.PORT ?? 3000);
+const upstreamPort = Number(process.env.UPSTREAM_PORT ?? publicPort + 1);
 
 const mime = {
   ".css": "text/css; charset=utf-8",
@@ -22,7 +22,7 @@ const mime = {
 
 const upstream = spawn(
   process.execPath,
-  [join(root, "node_modules", "vinext", "dist", "cli.js"), "start", "--host", "localhost", "--port", String(upstreamPort)],
+  [join(root, "node_modules", "vinext", "dist", "cli.js"), "start", "--host", "127.0.0.1", "--port", String(upstreamPort)],
   { cwd: root, env: process.env, stdio: "inherit" },
 );
 
@@ -54,8 +54,8 @@ const server = createServer((req, res) => {
   req.pipe(proxied);
 });
 
-server.listen(publicPort, "localhost", () => {
-  console.log(`Fleetora local preview: http://localhost:${publicPort}`);
+server.listen(publicPort, "0.0.0.0", () => {
+  console.log(`Fleetora web service listening on port ${publicPort}`);
 });
 
 const shutdown = () => {
