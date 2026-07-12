@@ -27,7 +27,7 @@ services:
     plan: free
     region: singapore
     branch: main
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node scripts/local-preview.mjs
     healthCheckPath: /
     autoDeployTrigger: commit
