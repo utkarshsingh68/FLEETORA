@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard, SupabaseAuthGuard } from '../auth/rbac';
 import { ErpService } from './erp.service';
@@ -21,6 +21,12 @@ export class ErpController {
   @Post('vehicles')
   @Roles('owner', 'admin', 'dispatcher')
   createVehicle(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createVehicle(req.user.companyId, req.user.token, body); }
+
+  @Patch('vehicles/:id')
+  @Roles('owner', 'admin', 'dispatcher')
+  updateVehicle(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.erp.updateVehicle(req.user.companyId, req.user.token, id, body);
+  }
 
   @Get('trips')
   trips(@Req() req: FleetoraRequest, @Query('limit') limit = '25', @Query('status') status?: string) { return this.erp.trips(req.user.companyId, req.user.token, Number(limit), status); }

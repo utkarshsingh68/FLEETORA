@@ -38,6 +38,12 @@ export class SupabaseService {
     return this.request<T[]>(table, token, { method: 'POST', body: JSON.stringify(body), prefer: 'return=representation' });
   }
 
+  async update<T>(table: string, token: string, query: Record<string, QueryValue>, body: Record<string, unknown>) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== '') params.set(key, String(value));
+    return this.request<T[]>(`${table}?${params}`, token, { method: 'PATCH', body: JSON.stringify(body), prefer: 'return=representation' });
+  }
+
   async rpc<T>(name: string, token: string, body: Record<string, unknown>) {
     return this.request<T>(`rpc/${name}`, token, { method: 'POST', body: JSON.stringify(body) });
   }

@@ -21,6 +21,11 @@ export class ErpService {
     return this.db.insert('vehicles', token, { ...body, company_id: companyId });
   }
 
+  updateVehicle(companyId: string, token: string, vehicleId: string, body: Record<string, unknown>) {
+    const { id: _id, company_id: _companyId, created_at: _createdAt, ...changes } = body;
+    return this.db.update('vehicles', token, { id: `eq.${vehicleId}`, company_id: `eq.${companyId}` }, changes);
+  }
+
   createTrip(companyId: string, token: string, body: Record<string, unknown>) {
     return this.db.insert('trips', token, { ...body, company_id: companyId });
   }

@@ -77,6 +77,7 @@ import {
   type NotificationItem,
   type ReportCard,
 } from "../lib/data";
+import { fleetoraApi } from "../lib/api";
 
 type ModuleRoute = Exclude<ModuleId, "dashboard">;
 type CellValue = string | number | null;
@@ -163,6 +164,32 @@ interface SettingsItem {
   defaultValue: boolean;
   badge?: string;
 }
+
+interface ApiVehicle {
+  id: string;
+  registration_number: string;
+  make_model: string | null;
+  capacity_tonnes: number | null;
+  status: "available" | "on_trip" | "maintenance" | "inactive";
+  current_location: string | null;
+  updated_at: string;
+}
+
+interface VehicleFormValue {
+  registration_number: string;
+  make_model: string;
+  capacity_tonnes: string;
+  status: ApiVehicle["status"];
+  current_location: string;
+}
+
+const EMPTY_VEHICLE: VehicleFormValue = {
+  registration_number: "",
+  make_model: "",
+  capacity_tonnes: "",
+  status: "available",
+  current_location: "",
+};
 
 const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
@@ -435,18 +462,16 @@ const CONFIGS: Record<ModuleRoute, ModuleConfig> = {
     rows: fleetData,
     columns: [
       { key: "asset", label: "Vehicle", secondaryKey: "model" },
-      { key: "assignment", label: "Driver" },
-      { key: "location", label: "Last location" },
-      { key: "utilization", label: "Utilisation", format: "percent" },
-      { key: "fuel", label: "Fuel", format: "percent" },
-      { key: "service", label: "Service in", format: "distance", align: "right" },
+      { key: "capacity", label: "Capacity", align: "right" },
+      { key: "location", label: "Current location" },
       { key: "status", label: "Status", format: "status" },
+      { key: "updated", label: "Last updated", format: "datetime" },
     ],
     filters: [
       ALL_FILTER,
       { value: "on-trip", label: "On trip", match: (row) => row.status === "On trip" },
       { value: "available", label: "Available", match: (row) => row.status === "Available" },
-      { value: "attention", label: "Needs attention", match: (row) => row.status === "In service" || row.status === "Inactive" },
+      { value: "attention", label: "Needs attention", match: (row) => row.status === "Maintenance" || row.status === "Inactive" },
     ],
     insight: {
       eyebrow: "Readiness forecast",
@@ -1129,7 +1154,17 @@ function renderCell(value: CellValue, column: ModuleColumn, row: ModuleRow): Rea
   return String(value);
 }
 
-function ModuleDataTable({ rows, columns, emptyText }: { rows: ModuleRow[]; columns: ModuleColumn[]; emptyText: string }) {
+function ModuleDataTable({
+  rows,
+  columns,
+  emptyText,
+  onEdit,
+}: {
+  rows: ModuleRow[];
+  columns: ModuleColumn[];
+  emptyText: string;
+  onEdit?: (row: ModuleRow) => void;
+}) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const definitions = useMemo<ColumnDef<ModuleRow>[]>(
     () =>
@@ -1179,7 +1214,13 @@ function ModuleDataTable({ rows, columns, emptyText }: { rows: ModuleRow[]; colu
                 <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
               ))}
               <td className="data-row-actions">
-                <button type="button" className="data-icon-button" aria-label={`Open actions for ${row.original.id}`}>
+                <button
+                  type="button"
+                  className="data-icon-button"
+                  aria-label={`Edit ${row.original.asset ?? row.original.id}`}
+                  onClick={() => onEdit?.(row.original)}
+                  disabled={!onEdit}
+                >
                   <MoreHorizontal size={17} aria-hidden="true" />
                 </button>
               </td>
@@ -1194,6 +1235,74 @@ function ModuleDataTable({ rows, columns, emptyText }: { rows: ModuleRow[]; colu
           <span>{emptyText}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function VehicleDialog({
+  value,
+  editing,
+  saving,
+  error,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  value: VehicleFormValue;
+  editing: boolean;
+  saving: boolean;
+  error: string | null;
+  onChange: (value: VehicleFormValue) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="vehicle-modal-layer" role="presentation">
+      <button type="button" className="modal-backdrop" aria-label="Close vehicle editor" onClick={onClose} />
+      <section className="vehicle-dialog" role="dialog" aria-modal="true" aria-labelledby="vehicle-dialog-title">
+        <div className="vehicle-dialog-header">
+          <div>
+            <span className="module-eyebrow"><Truck size={15} /> Fleet asset</span>
+            <h2 id="vehicle-dialog-title">{editing ? "Edit vehicle" : "Add vehicle"}</h2>
+            <p>{editing ? "Update the live fleet record." : "Register a vehicle in your workspace."}</p>
+          </div>
+          <button type="button" className="data-icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+        <div className="vehicle-form-grid">
+          <label>
+            <span>Registration number</span>
+            <input value={value.registration_number} onChange={(event) => onChange({ ...value, registration_number: event.target.value.toUpperCase() })} placeholder="MH 12 AB 1234" />
+          </label>
+          <label>
+            <span>Make and model</span>
+            <input value={value.make_model} onChange={(event) => onChange({ ...value, make_model: event.target.value })} placeholder="Tata Signa 4825.TK" />
+          </label>
+          <label>
+            <span>Capacity (tonnes)</span>
+            <input type="number" min="0" step="0.1" value={value.capacity_tonnes} onChange={(event) => onChange({ ...value, capacity_tonnes: event.target.value })} placeholder="24" />
+          </label>
+          <label>
+            <span>Status</span>
+            <select value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as ApiVehicle["status"] })}>
+              <option value="available">Available</option>
+              <option value="on_trip">On trip</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
+          <label className="vehicle-form-wide">
+            <span>Current location</span>
+            <input value={value.current_location} onChange={(event) => onChange({ ...value, current_location: event.target.value })} placeholder="Mumbai HQ" />
+          </label>
+        </div>
+        {error && <div className="vehicle-form-error" role="alert">{error}</div>}
+        <div className="vehicle-dialog-actions">
+          <button type="button" className="module-button module-button-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="module-button module-button-primary" disabled={saving || !value.registration_number.trim()} onClick={onSubmit}>
+            {saving ? "Saving…" : editing ? "Save changes" : "Add vehicle"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1393,6 +1502,14 @@ export function ModuleView({ route }: ModuleViewProps) {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [notice, setNotice] = useState<string | null>(null);
+  const [vehicles, setVehicles] = useState<ApiVehicle[]>([]);
+  const [fleetLoading, setFleetLoading] = useState(false);
+  const [fleetError, setFleetError] = useState<string | null>(null);
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [vehicleForm, setVehicleForm] = useState<VehicleFormValue>(EMPTY_VEHICLE);
+  const [vehicleSaving, setVehicleSaving] = useState(false);
+  const [vehicleFormError, setVehicleFormError] = useState<string | null>(null);
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(
     () => new Set(notifications.filter((item) => !item.unread).map((item) => item.id)),
   );
@@ -1406,13 +1523,46 @@ export function ModuleView({ route }: ModuleViewProps) {
     setNotice(null);
   }, [routeKey]);
 
+  const loadVehicles = async () => {
+    setFleetLoading(true);
+    setFleetError(null);
+    try {
+      setVehicles(await fleetoraApi<ApiVehicle[]>("/vehicles?limit=100"));
+    } catch (error) {
+      setFleetError(error instanceof Error ? error.message : "Could not load fleet records.");
+    } finally {
+      setFleetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (routeKey !== "fleet") return;
+    void loadVehicles();
+    if (new URLSearchParams(window.location.search).get("new") === "true") {
+      setEditingVehicleId(null);
+      setVehicleForm(EMPTY_VEHICLE);
+      setVehicleDialogOpen(true);
+    }
+  }, [routeKey]);
+
+  const liveFleetRows = useMemo<ModuleRow[]>(() => vehicles.map((vehicle) => ({
+    id: vehicle.id,
+    asset: vehicle.registration_number,
+    model: vehicle.make_model || "Model not specified",
+    capacity: vehicle.capacity_tonnes === null ? "—" : `${vehicle.capacity_tonnes} T`,
+    location: vehicle.current_location || "Not updated",
+    status: vehicle.status === "on_trip" ? "On trip" : vehicle.status === "maintenance" ? "Maintenance" : `${vehicle.status.charAt(0).toUpperCase()}${vehicle.status.slice(1)}`,
+    updated: vehicle.updated_at,
+  })), [vehicles]);
+
   const effectiveRows = useMemo(() => {
+    if (routeKey === "fleet") return liveFleetRows;
     if (routeKey !== "notifications") return config.rows;
     return config.rows.map((row) => ({
       ...row,
       status: readNotificationIds.has(String(row.id)) ? "Read" : "Unread",
     }));
-  }, [config.rows, readNotificationIds, routeKey]);
+  }, [config.rows, liveFleetRows, readNotificationIds, routeKey]);
 
   const visibleRows = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -1427,11 +1577,82 @@ export function ModuleView({ route }: ModuleViewProps) {
   const showNotice = (message: string) => setNotice(message);
 
   const handlePrimaryAction = () => {
+    if (routeKey === "fleet") {
+      setEditingVehicleId(null);
+      setVehicleForm(EMPTY_VEHICLE);
+      setVehicleFormError(null);
+      setVehicleDialogOpen(true);
+      return;
+    }
     if (routeKey === "notifications") {
       setReadNotificationIds(new Set(notifications.map((item) => item.id)));
     }
     setNotice(config.primaryPastTense);
   };
+
+  const editVehicle = (row: ModuleRow) => {
+    const vehicle = vehicles.find((item) => item.id === row.id);
+    if (!vehicle) return;
+    setEditingVehicleId(vehicle.id);
+    setVehicleForm({
+      registration_number: vehicle.registration_number,
+      make_model: vehicle.make_model ?? "",
+      capacity_tonnes: vehicle.capacity_tonnes === null ? "" : String(vehicle.capacity_tonnes),
+      status: vehicle.status,
+      current_location: vehicle.current_location ?? "",
+    });
+    setVehicleFormError(null);
+    setVehicleDialogOpen(true);
+  };
+
+  const saveVehicle = async () => {
+    if (!vehicleForm.registration_number.trim()) return;
+    setVehicleSaving(true);
+    setVehicleFormError(null);
+    const payload = {
+      registration_number: vehicleForm.registration_number.trim(),
+      make_model: vehicleForm.make_model.trim() || null,
+      capacity_tonnes: vehicleForm.capacity_tonnes ? Number(vehicleForm.capacity_tonnes) : null,
+      status: vehicleForm.status,
+      current_location: vehicleForm.current_location.trim() || null,
+    };
+    try {
+      if (editingVehicleId) {
+        await fleetoraApi<ApiVehicle[]>(`/vehicles/${editingVehicleId}`, { method: "PATCH", body: JSON.stringify(payload) });
+      } else {
+        await fleetoraApi<ApiVehicle[]>("/vehicles", { method: "POST", body: JSON.stringify(payload) });
+      }
+      setVehicleDialogOpen(false);
+      setNotice(editingVehicleId ? "Vehicle updated" : "Vehicle added to fleet");
+      await loadVehicles();
+    } catch (error) {
+      setVehicleFormError(error instanceof Error ? error.message : "Could not save this vehicle.");
+    } finally {
+      setVehicleSaving(false);
+    }
+  };
+
+  const displayedKpis = routeKey === "fleet" ? [
+    { ...config.kpis[0], value: String(vehicles.length), detail: fleetLoading ? "Refreshing live fleet…" : "Live database records" },
+    { ...config.kpis[1], value: vehicles.length ? `${Math.round((vehicles.filter((item) => item.status === "available").length / vehicles.length) * 100)}%` : "0%", detail: `${vehicles.filter((item) => item.status === "available").length} vehicles available` },
+    { ...config.kpis[2], label: "On trip", value: String(vehicles.filter((item) => item.status === "on_trip").length), detail: "Vehicles currently on trip" },
+    { ...config.kpis[3], label: "Maintenance", value: String(vehicles.filter((item) => item.status === "maintenance").length), detail: "Vehicles requiring service" },
+  ] : config.kpis;
+
+  const displayedInsight = routeKey === "fleet" ? {
+    ...config.insight,
+    title: vehicles.length ? "Live fleet readiness" : "Your fleet workspace is ready",
+    body: vehicles.length ? "Capacity figures below are calculated from vehicles stored in your database." : "Add your first vehicle to begin tracking availability, capacity, and maintenance status.",
+    metric: `${vehicles.reduce((sum, item) => sum + (Number(item.capacity_tonnes) || 0), 0).toLocaleString("en-IN")} T`,
+    metricLabel: "registered payload capacity",
+    progress: vehicles.length ? Math.round((vehicles.filter((item) => item.status === "available").length / vehicles.length) * 100) : 0,
+    items: [
+      { label: "Available", value: `${vehicles.filter((item) => item.status === "available").length} vehicles`, tone: "emerald" as Tone },
+      { label: "On trip", value: `${vehicles.filter((item) => item.status === "on_trip").length} vehicles`, tone: "blue" as Tone },
+      { label: "Needs attention", value: `${vehicles.filter((item) => item.status === "maintenance" || item.status === "inactive").length} vehicles`, tone: "amber" as Tone },
+    ],
+    action: "Add vehicle",
+  } : config.insight;
 
   const handleToggleSetting = (id: string) => {
     setSettingValues((current) => ({ ...current, [id]: !current[id] }));
@@ -1463,7 +1684,7 @@ export function ModuleView({ route }: ModuleViewProps) {
       </header>
 
       <section className="module-kpis" aria-label={`${config.title} key metrics`}>
-        {config.kpis.map((kpi, index) => {
+        {displayedKpis.map((kpi, index) => {
           const Icon = kpi.icon;
           return (
             <motion.article
@@ -1523,8 +1744,17 @@ export function ModuleView({ route }: ModuleViewProps) {
             <span className="module-record-count">{visibleRows.length} {visibleRows.length === 1 ? "result" : "results"}</span>
           </div>
 
+          {routeKey === "fleet" && fleetError && (
+            <div className="module-inline-error" role="alert">{fleetError} <button type="button" onClick={() => void loadVehicles()}>Retry</button></div>
+          )}
+
           {config.view === "table" && (
-            <ModuleDataTable rows={visibleRows} columns={config.columns} emptyText="Try a broader search or switch the selected filter." />
+            <ModuleDataTable
+              rows={visibleRows}
+              columns={config.columns}
+              emptyText={routeKey === "fleet" && !fleetLoading ? "Add your first vehicle to start building the live fleet register." : "Try a broader search or switch the selected filter."}
+              onEdit={routeKey === "fleet" ? editVehicle : undefined}
+            />
           )}
           {config.view === "reports" && <ReportsView rows={visibleRows} onAction={showNotice} />}
           {config.view === "notifications" && (
@@ -1539,10 +1769,21 @@ export function ModuleView({ route }: ModuleViewProps) {
           )}
         </section>
 
-        <InsightPanel insight={config.insight} onAction={showNotice} />
+        <InsightPanel insight={displayedInsight} onAction={routeKey === "fleet" ? () => handlePrimaryAction() : showNotice} />
       </div>
 
       <AnimatePresence>
+        {vehicleDialogOpen && (
+          <VehicleDialog
+            value={vehicleForm}
+            editing={Boolean(editingVehicleId)}
+            saving={vehicleSaving}
+            error={vehicleFormError}
+            onChange={setVehicleForm}
+            onClose={() => setVehicleDialogOpen(false)}
+            onSubmit={() => void saveVehicle()}
+          />
+        )}
         {notice && (
           <motion.div
             className="notice-toast"
