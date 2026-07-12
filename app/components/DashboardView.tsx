@@ -4,12 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowRight, Building2, CalendarDays, ChevronRight, Clock3,
-  IndianRupee, MapPin, Navigation, Plus, RefreshCw, Route, Truck, UserPlus,
+  IndianRupee, MapPin, Navigation, Plus, RefreshCw, Route, Truck,
   type LucideIcon,
 } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
-import { formatCompactINR } from "../lib/data";
 import { supabase } from "../lib/supabase";
+
+const formatCompactINR = (value: number, maximumFractionDigits = 1) => new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  notation: "compact",
+  maximumFractionDigits,
+}).format(value);
 
 type DashboardKpis = { vehicles: number; runningTrips: number; customers: number; receivable: number };
 type ApiTrip = {
@@ -26,10 +32,7 @@ type ApiTrip = {
 };
 
 const quickActions: Array<{ label: string; description: string; href: string; icon: LucideIcon; tone: string }> = [
-  { label: "Create trip", description: "Plan a new shipment", href: "/trips?new=true", icon: Route, tone: "blue" },
-  { label: "Add driver", description: "Create a driver profile", href: "/drivers?new=true", icon: UserPlus, tone: "emerald" },
   { label: "Add vehicle", description: "Register fleet capacity", href: "/fleet?new=true", icon: Truck, tone: "violet" },
-  { label: "Add customer", description: "Create a customer account", href: "/customers?new=true", icon: Building2, tone: "amber" },
 ];
 
 const statusTone: Record<string, string> = {
@@ -99,7 +102,7 @@ export function DashboardView({ onQuickAdd }: DashboardViewProps) {
             <button className="dash-button dash-button-secondary" onClick={() => void loadDashboard()} type="button" disabled={loading}>
               <RefreshCw size={16} className={loading ? "dashboard-spin" : ""} />Refresh
             </button>
-            <button className="dash-button dash-button-primary" onClick={onQuickAdd} type="button"><Plus size={17} />Create trip</button>
+            <button className="dash-button dash-button-primary" onClick={onQuickAdd} type="button"><Plus size={17} />Add vehicle</button>
           </div>
         </div>
         <nav className="dash-command-row" aria-label="Quick actions">
@@ -138,7 +141,7 @@ export function DashboardView({ onQuickAdd }: DashboardViewProps) {
           <div className="dashboard-readiness-grid">
             {cards.slice(0, 3).map((card) => <div key={card.label}><strong>{loading ? "—" : card.value}</strong><span>{card.label}</span></div>)}
           </div>
-          {!loading && !trips.length && <div className="dashboard-empty"><Route size={24} /><strong>No trips yet</strong><span>Create your first trip to begin live reporting.</span><button onClick={onQuickAdd}>Create trip</button></div>}
+          {!loading && !trips.length && <div className="dashboard-empty"><Route size={24} /><strong>No trips yet</strong><span>Trip creation will appear here after its backend workflow is connected.</span></div>}
         </article>
         <article className="panel-card chart-status-panel">
           <div className="panel-header"><div className="panel-heading"><span className="panel-eyebrow">Live trip health</span><h2>Status breakdown</h2><p>Calculated from current database records.</p></div></div>

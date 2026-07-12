@@ -68,8 +68,8 @@ const navigation: { label: string; items: NavItem[] }[] = [
     label: "Command center",
     items: [
       { label: "Dashboard", route: "dashboard", icon: LayoutDashboard },
-      { label: "Trips", route: "trips", icon: Zap, badge: "24" },
-      { label: "GPS Tracking", route: "gps", icon: MapPinned, badge: "Live" },
+      { label: "Trips", route: "trips", icon: Zap },
+      { label: "GPS Tracking", route: "gps", icon: MapPinned },
     ],
   },
   {
@@ -77,12 +77,12 @@ const navigation: { label: string; items: NavItem[] }[] = [
     items: [
       { label: "Fleet", route: "fleet", icon: Truck },
       { label: "Drivers", route: "drivers", icon: UserRoundCheck },
-      { label: "FASTag", route: "fastag", icon: TicketCheck, badge: "6" },
+      { label: "FASTag", route: "fastag", icon: TicketCheck },
       { label: "Workshop", route: "workshop", icon: Wrench },
-      { label: "Tyres", route: "tyres", icon: Gauge, badge: "18" },
+      { label: "Tyres", route: "tyres", icon: Gauge },
       { label: "Batteries", route: "batteries", icon: BatteryCharging },
       { label: "Maintenance", route: "maintenance", icon: Wrench },
-      { label: "Documents", route: "documents", icon: FileCheck2, badge: "7" },
+      { label: "Documents", route: "documents", icon: FileCheck2 },
     ],
   },
   {
@@ -110,7 +110,7 @@ const navigation: { label: string; items: NavItem[] }[] = [
     items: [
       { label: "Reports", route: "reports", icon: FileBarChart },
       { label: "Analytics", route: "analytics", icon: BarChart3 },
-      { label: "Notifications", route: "notifications", icon: Bell, badge: "9" },
+      { label: "Notifications", route: "notifications", icon: Bell },
       { label: "Audit Logs", route: "audit-logs", icon: ShieldCheck },
     ],
   },
@@ -334,8 +334,8 @@ export function AppShell({ route }: AppShellProps) {
         </div>
 
         <button className="company-switcher" type="button">
-          <span className="company-avatar">NL</span>
-          <span className="company-copy"><strong>NorthStar Logistics</strong><small>Mumbai HQ</small></span>
+          <span className="company-avatar">FW</span>
+          <span className="company-copy"><strong>Fleetora Workspace</strong><small>Live account</small></span>
           <ChevronDown size={15} />
         </button>
 
@@ -365,9 +365,9 @@ export function AppShell({ route }: AppShellProps) {
         </nav>
 
         <div className="sidebar-health">
-          <div className="health-row"><span><span className="health-dot" /> System health</span><strong>99.99%</strong></div>
+          <div className="health-row"><span><span className="health-dot" /> Backend</span><strong>Online</strong></div>
           <div className="health-track"><span /></div>
-          <p>All services operational</p>
+          <p>Connected to live services</p>
         </div>
 
         <div className="sidebar-profile-wrap">
@@ -389,7 +389,7 @@ export function AppShell({ route }: AppShellProps) {
         <header className="app-topbar">
           <div className="topbar-context">
             <button className="icon-button mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={19} /></button>
-            <div className="breadcrumb"><span>NorthStar Logistics</span><b>/</b><strong>{activeLabel}</strong></div>
+            <div className="breadcrumb"><span>Fleetora Workspace</span><b>/</b><strong>{activeLabel}</strong></div>
           </div>
 
           <div className="topbar-actions">
@@ -398,7 +398,7 @@ export function AppShell({ route }: AppShellProps) {
               <span>Search anything…</span>
               <kbd><Command size={11} /> K</kbd>
             </button>
-            <button className="button primary-button topbar-add" onClick={() => setQuickOpen(true)}><Plus size={16} /> <span>Quick add</span></button>
+            <button className="button primary-button topbar-add" onClick={() => window.location.assign("/fleet?new=true")}><Plus size={16} /> <span>Add vehicle</span></button>
             <button className="icon-button notification-button" aria-label="View notifications"><Bell size={18} /><span /></button>
             <button className="icon-button" onClick={() => setDark((value) => !value)} aria-label={dark ? "Use light theme" : "Use dark theme"}>
               {dark ? <Sun size={18} /> : <Moon size={18} />}
@@ -408,7 +408,7 @@ export function AppShell({ route }: AppShellProps) {
 
         <main className="app-content">
           {route === "dashboard" ? (
-            <DashboardView onQuickAdd={() => setQuickOpen(true)} />
+            <DashboardView onQuickAdd={() => window.location.assign("/fleet?new=true")} />
           ) : enterpriseRoutes.has(route) ? (
             <EnterpriseModuleView route={route} />
           ) : (
