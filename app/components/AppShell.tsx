@@ -25,16 +25,20 @@ import {
   Handshake,
   Headphones,
   LayoutDashboard,
+  LogOut,
+  Mail,
   Menu,
   MapPinned,
   Moon,
   Plus,
+  Pencil,
   ReceiptIndianRupee,
   Search,
   Settings,
   ShieldCheck,
   Sun,
   Truck,
+  Phone,
   TicketCheck,
   UserRoundCheck,
   UsersRound,
@@ -48,6 +52,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { DashboardView } from "./DashboardView";
 import { ModuleView } from "./ModuleView";
 import { EnterpriseModuleView, enterpriseRoutes } from "./EnterpriseModuleView";
+import { supabase } from "../lib/supabase";
 
 type AppShellProps = { route: string };
 
@@ -228,6 +233,12 @@ export function AppShell({ route }: AppShellProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileName, setProfileName] = useState("Fleetora user");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
   const activeLabel = routeLabels[route] ?? "Workspace";
 
   const commandItems = useMemo(() => {
@@ -258,6 +269,48 @@ export function AppShell({ route }: AppShellProps) {
     const timer = window.setTimeout(() => setToast(""), 3200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) return;
+      setProfileEmail(user.email ?? "");
+      const { data: profile } = await supabase.from("profiles").select("full_name,phone").eq("id", user.id).maybeSingle();
+      const fullName = profile?.full_name || user.user_metadata?.full_name;
+      if (typeof fullName === "string" && fullName.trim()) setProfileName(fullName.trim());
+      if (typeof profile?.phone === "string") setProfilePhone(profile.phone);
+    })();
+  }, []);
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    setProfileSaving(true);
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+    if (!user) {
+      window.location.assign("/login");
+      return;
+    }
+    const { error } = await supabase.from("profiles").upsert({ id: user.id, full_name: profileName.trim(), phone: profilePhone.trim() || null, updated_at: new Date().toISOString() });
+    setProfileSaving(false);
+    if (error) {
+      setToast(error.message);
+      return;
+    }
+    setProfileOpen(false);
+    setToast("Your profile was updated.");
+  }
+
+  async function logout() {
+    setProfileMenuOpen(false);
+    await supabase?.auth.signOut();
+    window.location.assign("/login");
+  }
+
+  const profileInitials = profileName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "FU";
 
   return (
     <div className={`app-shell${dark ? " theme-dark" : ""}`}>
@@ -317,11 +370,19 @@ export function AppShell({ route }: AppShellProps) {
           <p>All services operational</p>
         </div>
 
-        <button className="sidebar-profile" type="button">
-          <span className="profile-avatar">AM</span>
-          <span className="profile-copy"><strong>Arjun Mehta</strong><small>Operations admin</small></span>
-          <ChevronDown size={15} />
-        </button>
+        <div className="sidebar-profile-wrap">
+          <button className="sidebar-profile" type="button" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>
+            <span className="profile-avatar">{profileInitials}</span>
+            <span className="profile-copy"><strong>{profileName}</strong><small>{profileEmail || "Fleetora account"}</small></span>
+            <ChevronDown size={15} />
+          </button>
+          {profileMenuOpen && (
+            <div className="profile-menu">
+              <button type="button" onClick={() => { setProfileOpen(true); setProfileMenuOpen(false); }}><Pencil size={15} /><span><strong>Edit profile</strong><small>Name and phone</small></span></button>
+              <button className="profile-menu-danger" type="button" onClick={() => void logout()}><LogOut size={15} /><span><strong>Log out</strong><small>End this session</small></span></button>
+            </div>
+          )}
+        </div>
       </aside>
 
       <div className="app-workspace">
@@ -395,6 +456,23 @@ export function AppShell({ route }: AppShellProps) {
 
       <AnimatePresence>
         {quickOpen && <QuickAddForm onClose={() => setQuickOpen(false)} onComplete={setToast} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {profileOpen && (
+          <>
+            <motion.button className="modal-backdrop" aria-label="Close profile editor" onClick={() => setProfileOpen(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+            <motion.div className="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title" initial={{ opacity: 0, scale: .98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 6 }}>
+              <div className="drawer-head"><div><span className="drawer-kicker">Your account</span><h2 id="profile-dialog-title">Edit profile</h2></div><button className="icon-button" onClick={() => setProfileOpen(false)} aria-label="Close"><X size={18} /></button></div>
+              <form className="drawer-form" onSubmit={saveProfile}>
+                <label><span>Full name</span><div className="profile-input-wrap"><Pencil size={15} /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} required minLength={2} /></div></label>
+                <label><span>Email address</span><div className="profile-input-wrap profile-input-disabled"><Mail size={15} /><input value={profileEmail} readOnly /></div><small>Email is managed by your authentication account.</small></label>
+                <label><span>Phone number</span><div className="profile-input-wrap"><Phone size={15} /><input value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} placeholder="+91 98765 43210" /></div></label>
+                <div className="drawer-actions"><button type="button" className="button secondary-button" onClick={() => setProfileOpen(false)}>Cancel</button><button type="submit" className="button primary-button" disabled={profileSaving}>{profileSaving ? "Saving…" : "Save profile"}</button></div>
+              </form>
+            </motion.div>
+          </>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
