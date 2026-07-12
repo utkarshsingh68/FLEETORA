@@ -5,7 +5,7 @@ services:
     plan: free
     region: singapore
     branch: main
-    buildCommand: npm install --prefix server && npm run build --prefix server
+    buildCommand: npm install --include=dev --prefix server && npm run build --prefix server
     startCommand: npm start --prefix server
     healthCheckPath: /api/v1/health
     autoDeployTrigger: commit
