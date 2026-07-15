@@ -725,3 +725,23 @@ a.data-table-primary { color: #2563eb; }
   .vehicle-form-grid { grid-template-columns: 1fr; }
   .vehicle-form-wide { grid-column: auto; }
 }
+
+/* Transport operations and accounting */
+.transport-dialog { max-height: 92vh; overflow: auto; width: min(760px, calc(100vw - 28px)); }
+.transport-form select, .transport-form input { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 9px; color: var(--app-ink); font: inherit; height: 42px; outline: 0; padding: 0 11px; width: 100%; }
+.transport-form select:focus, .transport-form input:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+.transport-form input[type="file"] { height: auto; padding: 9px 11px; }
+.transport-calculation { align-content: center; background: linear-gradient(135deg,#eff6ff,#f8fafc); border: 1px solid #bfdbfe; border-radius: 10px; display: grid; gap: 3px; min-height: 64px; padding: 10px 13px; }
+.transport-calculation span { color: #64748b; font-size: 8px; font-weight: 650; }
+.transport-calculation strong { color: #1d4ed8; font-size: 17px; }
+.report-filter { justify-content: space-between; padding: 10px 12px; }
+.report-filter label { align-items: center; display: flex; font-size: 9px; font-weight: 650; gap: 9px; }
+.report-filter input { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 7px; color: var(--app-ink); height: 32px; padding: 0 8px; }
+.report-panels { display: grid; gap: 12px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.report-panels .data-table { min-width: 520px; }
+.status-scheduled { background:#eff6ff;color:#1d4ed8; }
+.status-in-transit { background:#fff7ed;color:#c2410c; }
+.status-delivered { background:#ecfdf5;color:#047857; }
+.status-cancelled { background:#fef2f2;color:#b91c1c; }
+@media (max-width: 980px) { .report-panels { grid-template-columns:1fr; } }
+@media (max-width: 650px) { .transport-dialog { width:calc(100vw - 20px); } .report-filter { align-items:flex-start; flex-direction:column; } }

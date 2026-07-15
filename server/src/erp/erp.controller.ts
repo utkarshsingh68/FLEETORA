@@ -38,6 +38,72 @@ export class ErpController {
   @Get('customers')
   customers(@Req() req: FleetoraRequest, @Query('limit') limit = '25') { return this.erp.customers(req.user.companyId, req.user.token, Number(limit)); }
 
+  @Post('customers')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  createCustomer(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createCustomer(req.user.companyId, req.user.token, body); }
+
+  @Patch('customers/:id')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  updateCustomer(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateCustomer(req.user.companyId, req.user.token, id, body); }
+
+  @Get('drivers')
+  drivers(@Req() req: FleetoraRequest, @Query('limit') limit = '100') { return this.erp.drivers(req.user.companyId, req.user.token, Number(limit)); }
+
+  @Post('drivers')
+  @Roles('owner', 'admin', 'dispatcher')
+  createDriver(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createDriver(req.user.companyId, req.user.token, body); }
+
+  @Patch('drivers/:id')
+  @Roles('owner', 'admin', 'dispatcher')
+  updateDriver(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateDriver(req.user.companyId, req.user.token, id, body); }
+
+  @Get('resources')
+  resources(@Req() req: FleetoraRequest) { return this.erp.resources(req.user.companyId, req.user.token); }
+
+  @Patch('trips/:id')
+  @Roles('owner', 'admin', 'dispatcher')
+  updateTrip(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateTrip(req.user.companyId, req.user.token, id, body); }
+
+  @Get('fuel')
+  fuel(@Req() req: FleetoraRequest) { return this.erp.fuelEntries(req.user.companyId, req.user.token); }
+
+  @Post('fuel')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  createFuel(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createFuel(req.user.companyId, req.user.token, body); }
+
+  @Patch('fuel/:id')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  updateFuel(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateFuel(req.user.companyId, req.user.token, id, body); }
+
+  @Delete('fuel/:id')
+  @Roles('owner', 'admin')
+  deleteFuel(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteOperational('fuel_entries', req.user.companyId, req.user.token, id); }
+
+  @Get('expenses')
+  expenses(@Req() req: FleetoraRequest) { return this.erp.expenses(req.user.companyId, req.user.token); }
+
+  @Post('expenses')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  createExpense(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.createExpense(req.user.companyId, req.user.token, body); }
+
+  @Patch('expenses/:id')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  updateExpense(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateExpense(req.user.companyId, req.user.token, id, body); }
+
+  @Delete('expenses/:id')
+  @Roles('owner', 'admin')
+  deleteExpense(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteOperational('operational_expenses', req.user.companyId, req.user.token, id); }
+
+  @Get('ledger')
+  ledger(@Req() req: FleetoraRequest) { return this.erp.ledger(req.user.companyId, req.user.token); }
+
+  @Post('ledger/payments')
+  @Roles('owner', 'admin', 'accountant')
+  payment(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.recordPayment(req.user.companyId, req.user.token, body); }
+
+  @Get('reports')
+  reports(@Req() req: FleetoraRequest) { return this.erp.reports(req.user.companyId, req.user.token); }
+
   @Get('records/:module')
   records(@Req() req: FleetoraRequest, @Param('module') module: string, @Query('limit') limit = '100') {
     return this.erp.moduleRecords(req.user.companyId, req.user.token, module, Number(limit));

@@ -1,6 +1,7 @@
 "use client";
 
 import { LiveModuleView } from "./LiveModuleView";
+import { TransportAccountingView, transportAccountingRoutes } from "./TransportAccountingView";
 
 const moduleNames: Record<string, string> = {
   brokers: "Broker network",
@@ -25,5 +26,5 @@ const moduleNames: Record<string, string> = {
 export const enterpriseRoutes = new Set(Object.keys(moduleNames));
 
 export function EnterpriseModuleView({ route }: { route: string }) {
-  return <LiveModuleView route={route} />;
+  return transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
 }

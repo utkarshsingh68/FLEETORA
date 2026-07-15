@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Database, Gauge, MoreHorizontal, Plus, Search, Truck, Wrench, X } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
 import { LiveModuleView } from "./LiveModuleView";
+import { TransportAccountingView, transportAccountingRoutes } from "./TransportAccountingView";
 
 type VehicleStatus = "available" | "on_trip" | "maintenance" | "inactive";
 type ApiVehicle = {
@@ -88,5 +89,5 @@ function FleetView() {
   </motion.main>;
 }
 
-export function ModuleView({ route }: { route: string }) { return route.toLowerCase().split("/")[0] === "fleet" ? <FleetView /> : <LiveModuleView route={route} />; }
+export function ModuleView({ route }: { route: string }) { const module = route.toLowerCase().split("/")[0]; return module === "fleet" ? <FleetView /> : transportAccountingRoutes.has(module) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />; }
 export default ModuleView;
