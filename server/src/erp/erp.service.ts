@@ -1,5 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { PaginatedTripsQueryDto } from './erp.dto';
+
+type TripPaginationResponse = {
+  data: unknown[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+};
 
 @Injectable()
 export class ErpService {
@@ -11,6 +22,33 @@ export class ErpService {
 
   trips(companyId: string, token: string, limit = 25, status?: string) {
     return this.db.select('trips', token, { select: '*,customers(name),vehicles(registration_number),drivers(full_name)', company_id: `eq.${companyId}`, deleted_at: 'is.null', status: status ? `eq.${status}` : undefined, order: 'created_at.desc', limit: Math.min(limit, 500) });
+  }
+
+  /**
+   * Fetches one exact-count page through a database function rather than
+   * loading every trip into Node. The function also performs cross-table
+   * customer, vehicle, driver, invoice, and LR document searches securely.
+   */
+  paginatedTrips(companyId: string, token: string, query: PaginatedTripsQueryDto) {
+    const requestedSize = query.pageSize ?? 25;
+    const pageSize = requestedSize <= 25 ? 25 : requestedSize <= 50 ? 50 : 100;
+    const page = Math.min(Math.max(query.page ?? 1, 1), 1_000_000);
+
+    return this.db.rpc<TripPaginationResponse>('fleetora_paginate_trips', token, {
+      p_company_id: companyId,
+      p_page: page,
+      p_page_size: pageSize,
+      p_search: query.search?.trim() || null,
+      p_status: query.status ?? null,
+      p_vehicle_id: query.vehicleId ?? null,
+      p_driver_id: query.driverId ?? null,
+      p_customer_id: query.customerId ?? null,
+      p_material: query.material?.trim() || null,
+      p_payment_status: query.paymentStatus ?? null,
+      p_date_from: query.dateFrom ?? null,
+      p_date_to: query.dateTo ?? null,
+      p_sort: query.sort ?? 'newest',
+    });
   }
 
   customers(companyId: string, token: string, limit = 25) {

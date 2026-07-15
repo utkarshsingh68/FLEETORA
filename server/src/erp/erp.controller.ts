@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard, SupabaseAuthGuard } from '../auth/rbac';
 import { ErpService } from './erp.service';
-import { CostDto, CustomerDto, DisputeDto, DriverDto, MaintenanceDto, PartDto, PaymentDto, PortalRequestDto, ReportScheduleDto, TripDto, TyreDto, VehicleDto } from './erp.dto';
+import { CostDto, CustomerDto, DisputeDto, DriverDto, MaintenanceDto, PaginatedTripsQueryDto, PartDto, PaymentDto, PortalRequestDto, ReportScheduleDto, TripDto, TyreDto, VehicleDto } from './erp.dto';
 
 type FleetoraRequest = { user: { id: string; companyId: string; branchId?: string; role: string; token: string } };
 
@@ -35,6 +35,15 @@ export class ErpController {
 
   @Get('trips')
   trips(@Req() req: FleetoraRequest, @Query('limit') limit = '25', @Query('status') status?: string) { return this.erp.trips(req.user.companyId, req.user.token, Number(limit), status); }
+
+  /**
+   * Enterprise trip register. Kept separate from GET /trips so the historic
+   * array API stays backwards compatible for existing clients.
+   */
+  @Get('trips/paginated')
+  paginatedTrips(@Req() req: FleetoraRequest, @Query() query: PaginatedTripsQueryDto) {
+    return this.erp.paginatedTrips(req.user.companyId, req.user.token, query);
+  }
 
   @Post('trips')
   @Roles('owner', 'admin', 'dispatcher')
