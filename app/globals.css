@@ -740,6 +740,12 @@ a.data-table-primary { color: #2563eb; }
 .report-filter { justify-content: space-between; padding: 10px 12px; }
 .report-filter label { align-items: center; display: flex; font-size: 9px; font-weight: 650; gap: 9px; }
 .report-filter input { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 7px; color: var(--app-ink); height: 32px; padding: 0 8px; }
+.report-filter select { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 7px; color: var(--app-ink); height: 36px; min-width: 220px; padding: 0 10px; }
+.party-ledger-filter { align-items: center; }
+.party-ledger-balance { align-items: flex-end; display: grid; gap: 2px; text-align: right; }
+.party-ledger-balance span { color: var(--app-muted); font-size: 9px; font-weight: 650; text-transform: uppercase; }
+.party-ledger-balance strong { font-size: 17px; }
+.module-section-actions { align-items: center; display: flex; gap: 10px; }
 .report-panels { display: grid; gap: 12px; grid-template-columns: repeat(2,minmax(0,1fr)); }
 .report-panels .data-table { min-width: 520px; }
 .status-scheduled { background:#eff6ff;color:#1d4ed8; }
