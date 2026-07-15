@@ -578,6 +578,7 @@ a.data-table-primary { color: #2563eb; }
 .panel-insight-list { display: grid; margin-top: 12px; }
 .panel-insight-item { align-items: center; border-bottom: 1px solid var(--app-line); display: flex; font-size: 8.5px; justify-content: space-between; min-height: 32px; }
 .panel-insight-item span { color: var(--app-muted); }
+.panel-insight-item span small { display: block; font-size: 7.5px; margin-top: 2px; }
 .panel-insight-item strong { font-size: 8.5px; }
 .panel-tone-emerald { color: #059669; }
 .panel-tone-amber { color: #d97706; }

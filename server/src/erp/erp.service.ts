@@ -75,11 +75,11 @@ export class ErpService {
   }
 
   createTrip(companyId: string, token: string, body: Record<string, unknown>) {
-    return this.db.insert('trips', token, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'quantity_tonnes', 'distance_km', 'notes'], companyId));
+    return this.db.insert('trips', token, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'quantity_tonnes', 'distance_km', 'notes'], companyId));
   }
 
   updateTrip(companyId: string, token: string, id: string, body: Record<string, unknown>) {
-    return this.db.update('trips', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'quantity_tonnes', 'distance_km', 'notes']));
+    return this.db.update('trips', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'quantity_tonnes', 'distance_km', 'notes']));
   }
 
   fuelEntries(companyId: string, token: string) {
@@ -107,7 +107,7 @@ export class ErpService {
   }
 
   ledger(companyId: string, token: string) {
-    return this.db.select('party_ledger', token, { select: '*,customers(name),trips(trip_number)', company_id: `eq.${companyId}`, order: 'entry_date.desc', limit: 500 });
+    return this.db.select('party_ledger', token, { select: '*,customers(name),trips(trip_number,material_name,quantity_tonnes)', company_id: `eq.${companyId}`, order: 'entry_date.desc', limit: 500 });
   }
 
   recordPayment(companyId: string, token: string, body: Record<string, unknown>) {
