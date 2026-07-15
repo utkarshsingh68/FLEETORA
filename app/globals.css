@@ -234,6 +234,9 @@ kbd { align-items: center; background: var(--app-surface); border: 1px solid var
 .module-inline-error { margin: 0 20px 12px; }
 .module-inline-error button { background: none; border: 0; color: #b42334; cursor: pointer; font-weight: 800; text-decoration: underline; }
 .data-icon-button:disabled { cursor: default; opacity: .35; }
+.live-record-actions { display: flex; gap: 5px; }
+.live-delete-button { color: #c2414d; }
+.live-delete-button:hover { background: #fff1f2; color: #9f1239; }
 
 .command-palette {
   background: var(--app-surface-raised);

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard, SupabaseAuthGuard } from '../auth/rbac';
 import { ErpService } from './erp.service';
@@ -37,4 +37,27 @@ export class ErpController {
 
   @Get('customers')
   customers(@Req() req: FleetoraRequest, @Query('limit') limit = '25') { return this.erp.customers(req.user.companyId, req.user.token, Number(limit)); }
+
+  @Get('records/:module')
+  records(@Req() req: FleetoraRequest, @Param('module') module: string, @Query('limit') limit = '100') {
+    return this.erp.moduleRecords(req.user.companyId, req.user.token, module, Number(limit));
+  }
+
+  @Post('records/:module')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  createRecord(@Req() req: FleetoraRequest, @Param('module') module: string, @Body() body: Record<string, unknown>) {
+    return this.erp.createModuleRecord(req.user.companyId, req.user.token, module, body);
+  }
+
+  @Patch('records/:module/:id')
+  @Roles('owner', 'admin', 'dispatcher', 'accountant')
+  updateRecord(@Req() req: FleetoraRequest, @Param('module') module: string, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.erp.updateModuleRecord(req.user.companyId, req.user.token, module, id, body);
+  }
+
+  @Delete('records/:module/:id')
+  @Roles('owner', 'admin')
+  deleteRecord(@Req() req: FleetoraRequest, @Param('module') module: string, @Param('id') id: string) {
+    return this.erp.deleteModuleRecord(req.user.companyId, req.user.token, module, id);
+  }
 }

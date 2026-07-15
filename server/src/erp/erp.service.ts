@@ -26,6 +26,27 @@ export class ErpService {
     return this.db.update('vehicles', token, { id: `eq.${vehicleId}`, company_id: `eq.${companyId}` }, changes);
   }
 
+  moduleRecords(companyId: string, token: string, module: string, limit = 100) {
+    return this.db.select('module_records', token, { company_id: `eq.${companyId}`, module: `eq.${module}`, order: 'updated_at.desc', limit: Math.min(limit, 100) });
+  }
+
+  createModuleRecord(companyId: string, token: string, module: string, body: Record<string, unknown>) {
+    return this.db.insert('module_records', token, this.cleanModuleRecord({ ...body, company_id: companyId, module }));
+  }
+
+  updateModuleRecord(companyId: string, token: string, module: string, id: string, body: Record<string, unknown>) {
+    return this.db.update('module_records', token, { id: `eq.${id}`, company_id: `eq.${companyId}`, module: `eq.${module}` }, this.cleanModuleRecord(body));
+  }
+
+  deleteModuleRecord(companyId: string, token: string, module: string, id: string) {
+    return this.db.delete('module_records', token, { id: `eq.${id}`, company_id: `eq.${companyId}`, module: `eq.${module}` });
+  }
+
+  private cleanModuleRecord(body: Record<string, unknown>) {
+    const allowed = ['company_id', 'module', 'name', 'reference', 'status', 'notes', 'amount', 'event_date', 'metadata'];
+    return Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key)));
+  }
+
   createTrip(companyId: string, token: string, body: Record<string, unknown>) {
     return this.db.insert('trips', token, { ...body, company_id: companyId });
   }

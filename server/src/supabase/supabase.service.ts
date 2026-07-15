@@ -44,6 +44,12 @@ export class SupabaseService {
     return this.request<T[]>(`${table}?${params}`, token, { method: 'PATCH', body: JSON.stringify(body), prefer: 'return=representation' });
   }
 
+  async delete(table: string, token: string, query: Record<string, QueryValue>) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== '') params.set(key, String(value));
+    return this.request<void>(`${table}?${params}`, token, { method: 'DELETE', prefer: 'return=minimal' });
+  }
+
   async rpc<T>(name: string, token: string, body: Record<string, unknown>) {
     return this.request<T>(`rpc/${name}`, token, { method: 'POST', body: JSON.stringify(body) });
   }
