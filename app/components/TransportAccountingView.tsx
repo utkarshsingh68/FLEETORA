@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Download, Droplets, FileText, Fuel, Pencil, Plus, Receipt, Trash2, Truck, Users, Wallet, X } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, Download, Droplets, FileText, Filter, Fuel, Pencil, Plus, Receipt, Search, SlidersHorizontal, Trash2, Truck, Users, Wallet, X } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
 import { supabase } from "../lib/supabase";
 
@@ -10,7 +10,9 @@ type Vehicle = { id: string; registration_number: string };
 type Driver = { id: string; full_name: string; phone?: string | null; license_number?: string | null; license_expiry?: string | null; status: string };
 type Customer = { id: string; name: string; phone?: string | null; contact_name?: string | null; email?: string | null; credit_limit?: number; payment_terms_days?: number; status: string };
 type Resources = { vehicles: Vehicle[]; drivers: Driver[]; customers: Customer[] };
-type Trip = { id: string; trip_number: string; customer_id: string | null; vehicle_id: string | null; driver_id: string | null; origin: string; destination: string; material_name: string | null; status: string; rate_type: string; rate: number; quantity_tonnes: number; distance_km: number; empty_distance_km: number; freight_amount: number; scheduled_start_at: string | null; created_at: string; customers?: { name: string } | null; vehicles?: { registration_number: string } | null; drivers?: { full_name: string } | null };
+type Trip = { id: string; trip_number: string; customer_id: string | null; vehicle_id: string | null; driver_id: string | null; origin: string; destination: string; material_name: string | null; status: string; rate_type: string; rate: number; quantity_tonnes: number; distance_km: number; empty_distance_km: number; freight_amount: number; scheduled_start_at: string | null; created_at: string; customer_name?: string | null; vehicle_registration?: string | null; driver_name?: string | null; customers?: { name: string } | null; vehicles?: { registration_number: string } | null; drivers?: { full_name: string } | null };
+type PaginatedTrips = { data: Trip[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } };
+type TripFilters = { status: string; vehicleId: string; driverId: string; customerId: string; material: string; paymentStatus: string; dateFrom: string; dateTo: string; sort: string };
 type FuelEntry = { id: string; vehicle_id: string | null; trip_id: string | null; filled_at: string; litres: number; amount: number; odometer_km: number | null; station_name: string | null; payment_mode: string; receipt_path: string | null; vehicles?: { registration_number: string } | null; trips?: { trip_number: string } | null };
 type Expense = { id: string; vehicle_id: string | null; trip_id: string | null; category: string; amount: number; payment_mode: string; expense_date: string; receipt_path: string | null; notes: string | null; automatic?: boolean; vehicles?: { registration_number: string } | null; trips?: { trip_number: string } | null };
 type LedgerEntry = { id: string; customer_id: string; trip_id: string | null; entry_date: string; entry_type: "debit" | "credit"; amount: number; payment_mode: string | null; reference: string | null; customers?: { name: string } | null; trips?: { trip_number: string; material_name: string | null; quantity_tonnes: number } | null };
@@ -40,24 +42,146 @@ function PageHeader({ icon: Icon, eyebrow, title, subtitle, action, onAdd }: { i
 function TripView() {
   const empty = { trip_number: "", customer_id: "", vehicle_id: "", driver_id: "", origin: "", destination: "", material_name: "", status: "scheduled", rate_type: "fixed", rate: "", quantity_tonnes: "", distance_km: "", empty_distance_km: "", scheduled_start_at: today(), notes: "" };
   const newTripExpense = () => ({ id: crypto.randomUUID(), category: "toll", amount: "", payment_mode: "cash", notes: "" });
-  const [records, setRecords] = useState<Trip[]>([]); const [resources, setResources] = useState<Resources>({ vehicles: [], drivers: [], customers: [] });
+  const [records, setRecords] = useState<Trip[]>([]);
+  const [resources, setResources] = useState<Resources>({ vehicles: [], drivers: [], customers: [] });
+  const [pagination, setPagination] = useState<PaginatedTrips["pagination"]>({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filters, setFilters] = useState<TripFilters>({ status: "", vehicleId: "", driverId: "", customerId: "", material: "", paymentStatus: "", dateFrom: "", dateTo: "", sort: "newest" });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const requestIdRef = useRef(0);
   const [form, setForm] = useState(empty); const [newParty, setNewParty] = useState({ name: "", phone: "", contact_name: "" }); const [tripExpenses, setTripExpenses] = useState<Array<ReturnType<typeof newTripExpense>>>([]); const [editing, setEditing] = useState<string | null>(null); const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
-  const load = useCallback(async () => { try { const [trips, refs] = await Promise.all([fleetoraApi<Trip[]>("/trips?limit=100"), fleetoraApi<Resources>("/resources")]); setRecords(trips); setResources(refs); setError(null); } catch (e) { setError(e instanceof Error ? e.message : "Could not load trips."); } }, []);
+  const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize), sort: filters.sort });
+    const queryValues = { search: debouncedSearch.trim(), status: filters.status, vehicleId: filters.vehicleId, driverId: filters.driverId, customerId: filters.customerId, material: filters.material.trim(), paymentStatus: filters.paymentStatus, dateFrom: filters.dateFrom, dateTo: filters.dateTo };
+    Object.entries(queryValues).forEach(([key, value]) => { if (value) query.set(key, value); });
+    setLoading(true);
+    try {
+      const result = await fleetoraApi<PaginatedTrips>(`/trips/paginated?${query.toString()}`);
+      if (requestId !== requestIdRef.current) return;
+      const nextPagination = result.pagination ?? { page, pageSize, total: 0, totalPages: 1 };
+      const totalPages = Math.max(1, Number(nextPagination.totalPages) || 1);
+      setRecords(result.data ?? []);
+      setPagination({ page: Number(nextPagination.page) || page, pageSize: Number(nextPagination.pageSize) || pageSize, total: Math.max(0, Number(nextPagination.total) || 0), totalPages });
+      if (page > totalPages) setPage(totalPages);
+      setError(null);
+    } catch (e) {
+      if (requestId === requestIdRef.current) setError(e instanceof Error ? e.message : "Could not load trips.");
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
+    }
+  }, [debouncedSearch, filters, page, pageSize]);
+  useEffect(() => {
+    let active = true;
+    void fleetoraApi<Resources>("/resources").then((refs) => { if (active) setResources(refs); }).catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : "Could not load trip filters."); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+  function updateFilter<Key extends keyof TripFilters>(key: Key, value: TripFilters[Key]) { setFilters(current => ({ ...current, [key]: value })); setPage(1); }
+  function clearFilters() { setSearchInput(""); setDebouncedSearch(""); setFilters({ status: "", vehicleId: "", driverId: "", customerId: "", material: "", paymentStatus: "", dateFrom: "", dateTo: "", sort: "newest" }); setPage(1); }
   const amount = form.rate_type === "per_ton" ? Number(form.rate) * Number(form.quantity_tonnes) : form.rate_type === "per_km" ? Number(form.rate) * Number(form.distance_km) : Number(form.rate);
   function add() { setEditing(null); setNewParty({ name: "", phone: "", contact_name: "" }); setTripExpenses([]); setForm({ ...empty, scheduled_start_at: today(), trip_number: `TRIP-${Date.now().toString().slice(-6)}` }); setOpen(true); }
   function edit(t: Trip) { setEditing(t.id); setTripExpenses([]); setForm({ trip_number: t.trip_number, customer_id: t.customer_id ?? "", vehicle_id: t.vehicle_id ?? "", driver_id: t.driver_id ?? "", origin: t.origin, destination: t.destination, material_name: t.material_name ?? "", status: t.status, rate_type: t.rate_type, rate: String(t.rate), quantity_tonnes: String(t.quantity_tonnes), distance_km: String(t.distance_km), empty_distance_km: String(t.empty_distance_km ?? 0), scheduled_start_at: t.scheduled_start_at?.slice(0, 10) ?? today(), notes: "" }); setOpen(true); }
   async function remove(t: Trip) { if (!window.confirm(`Delete trip “${t.trip_number}”? This cannot be undone.`)) return; try { await fleetoraApi(`/trips/${t.id}`, { method: "DELETE" }); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Could not delete trip."); } }
   function updateTripExpense(id: string, patch: Partial<ReturnType<typeof newTripExpense>>) { setTripExpenses(rows => rows.map(row => row.id === id ? { ...row, ...patch } : row)); }
   async function save() { setSaving(true); try { let partyId = form.customer_id; if (partyId === "__new__") { const created = await fleetoraApi<Customer[]>("/customers", { method: "POST", body: JSON.stringify({ ...newParty, status: "active", credit_limit: 0, payment_terms_days: 30 }) }); partyId = created[0]?.id ?? ""; if (!partyId) throw new Error("The new party could not be created."); } const body = { ...form, customer_id: partyId || null, vehicle_id: form.vehicle_id || null, driver_id: form.driver_id || null, rate: Number(form.rate), quantity_tonnes: Number(form.quantity_tonnes), distance_km: Number(form.distance_km), empty_distance_km: Number(form.empty_distance_km), scheduled_start_at: form.scheduled_start_at || null, actual_end_at: form.status === "delivered" ? new Date().toISOString() : null }; const saved = await fleetoraApi<Trip[]>(editing ? `/trips/${editing}` : "/trips", { method: editing ? "PATCH" : "POST", body: JSON.stringify(body) }); const tripId = editing ?? saved[0]?.id; if (tripId && tripExpenses.length) { await Promise.all(tripExpenses.map(expense => fleetoraApi("/expenses", { method: "POST", body: JSON.stringify({ trip_id: tripId, vehicle_id: form.vehicle_id || null, category: expense.category, amount: Number(expense.amount), payment_mode: expense.payment_mode, expense_date: form.scheduled_start_at || today(), notes: expense.notes || null }) }))); } setOpen(false); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Could not save trip."); } finally { setSaving(false); } }
-  const completed = records.filter(r => r.status === "delivered").reduce((s, r) => s + Number(r.freight_amount), 0);
-  return <motion.main className="module-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><PageHeader icon={Truck} eyebrow="Dispatch and income" title="Trip control" subtitle="Assign parties, trucks and drivers. Freight is calculated from the selected rate type." action="Create trip" onAdd={add} />
-    <section className="module-kpis">{[["Trips", records.length], ["In progress", records.filter(r => r.status === "in_transit").length], ["Completed income", money(completed)], ["Outstanding trips", records.filter(r => r.status !== "delivered" && r.status !== "cancelled").length]].map(([label, value]) => <article className="module-kpi module-tone-blue" key={label}><span className="module-kpi-icon"><Truck size={18} /></span><div className="module-kpi-copy"><span>{label}</span><strong>{value}</strong><small>Live trip data</small></div></article>)}</section>
+  const completedOnPage = records.filter(r => r.status === "delivered").reduce((sum, trip) => sum + Number(trip.freight_amount), 0);
+  const activeFilterCount = [filters.status, filters.vehicleId, filters.driverId, filters.customerId, filters.material, filters.paymentStatus, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  const firstRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
+  const lastRecord = pagination.total === 0 ? 0 : Math.min(firstRecord + records.length - 1, pagination.total);
+  const pageNumbers = Array.from(new Set([1, 2, pagination.page - 1, pagination.page, pagination.page + 1, pagination.totalPages - 1, pagination.totalPages].filter(number => number >= 1 && number <= pagination.totalPages))).sort((a, b) => a - b);
+  return <motion.main className="module-page trip-module-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <PageHeader icon={Truck} eyebrow="Dispatch and income" title="Trip control" subtitle="Search and manage every trip without loading your full trip history into the browser." action="Create trip" onAdd={add} />
+    <section className="module-kpis" aria-label="Trip page summary">
+      {[["Total trips", pagination.total, "Across the active workspace"], ["On this page", records.length, `${pagination.pageSize} records per page`], ["In progress", records.filter(r => r.status === "in_transit").length, "On this page"], ["Completed income", money(completedOnPage), "On this page"]].map(([label, value, detail]) => <article className="module-kpi module-tone-blue" key={String(label)}><span className="module-kpi-icon"><Truck size={18} /></span><div className="module-kpi-copy"><span>{String(label)}</span><strong>{String(value)}</strong><small>{String(detail)}</small></div></article>)}
+    </section>
     {error && <div className="module-inline-error" role="alert">{error}</div>}
-    <section className="module-data-panel"><div className="module-section-heading"><div><h2>Trip register</h2><p>Completing a trip automatically posts its amount to the party ledger as Udhar.</p></div><span className="module-record-count">{records.length} trips</span></div><div className="data-table-wrap"><table className="data-table enterprise-table"><thead><tr><th>Trip / Date</th><th>Party</th><th>Truck / Driver</th><th>Material / Weight</th><th>Route</th><th>Rate</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{records.map(t => <tr key={t.id}><td><span className="data-primary-cell"><strong>{t.trip_number}</strong><small>{t.scheduled_start_at ? new Date(t.scheduled_start_at).toLocaleDateString("en-IN") : "Date not set"}</small></span></td><td>{t.customers?.name ?? "Not assigned"}</td><td><span className="data-primary-cell"><strong>{t.vehicles?.registration_number ?? "No truck"}</strong><small>{t.drivers?.full_name ?? "No driver"}</small></span></td><td><span className="data-primary-cell"><strong>{t.material_name ?? "Not recorded"}</strong><small>{Number(t.quantity_tonnes) > 0 ? `${Number(t.quantity_tonnes).toLocaleString("en-IN")} tonnes` : "Weight not recorded"}</small></span></td><td>{t.origin} - {t.destination}</td><td>{t.rate_type.replace("_", " ")} @ {money(t.rate)}</td><td className="data-money data-money-positive">{money(t.freight_amount)}</td><td><span className={`status-pill status-${t.status.replace("_", "-")}`}>{tripStatus[t.status] ?? t.status}</span></td><td><div className="live-record-actions"><button className="data-icon-button" title="Edit" aria-label={`Edit ${t.trip_number}`} onClick={() => edit(t)}><Pencil size={16} /></button><button className="data-icon-button live-delete-button" title="Delete" aria-label={`Delete ${t.trip_number}`} onClick={() => void remove(t)}><Trash2 size={16} /></button></div></td></tr>)}</tbody></table>{!records.length && <div className="data-empty"><Truck size={22} /><strong>No trips yet</strong><span>Create your first trip.</span></div>}</div></section>
+    <section className="module-data-panel trip-register-panel">
+      <div className="module-section-heading">
+        <div>
+          <h2>Trip register</h2>
+          <p>Server-side search, filters and pagination keep even large trip histories fast.</p>
+        </div>
+        <span className="module-record-count">{pagination.total.toLocaleString("en-IN")} trips</span>
+      </div>
+      <div className="trip-query-toolbar">
+        <label className="filter-search trip-search-field">
+          <Search size={16} aria-hidden="true" />
+          <span className="data-visually-hidden">Search trip records</span>
+          <input value={searchInput} onChange={event => { setSearchInput(event.target.value); setPage(1); }} placeholder="Search Trip ID, LR, invoice, truck, driver, customer or route" />
+          {searchInput && <button type="button" aria-label="Clear search" onClick={() => { setSearchInput(""); setPage(1); }}><X size={14} /></button>}
+        </label>
+        <button type="button" className={["trip-filter-toggle", filtersOpen && "trip-filter-toggle-active"].filter(Boolean).join(" ")} onClick={() => setFiltersOpen(openFilters => !openFilters)} aria-expanded={filtersOpen} aria-controls="trip-advanced-filters"><Filter size={15} /> Filters{activeFilterCount ? " (" + activeFilterCount + ")" : ""}</button>
+        <label className="trip-select-control">
+          <span>Sort</span>
+          <select value={filters.sort} onChange={event => updateFilter("sort", event.target.value)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="freight">Highest freight</option>
+            <option value="driver">Driver A-Z</option>
+            <option value="vehicle">Vehicle A-Z</option>
+          </select>
+        </label>
+        <label className="trip-select-control trip-page-size-control">
+          <span>Rows</span>
+          <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }}>
+            {[25, 50, 100].map(size => <option key={size} value={size}>{size} / page</option>)}
+          </select>
+        </label>
+      </div>
+      <div id="trip-advanced-filters" className={["trip-filter-grid", filtersOpen && "trip-filter-grid-open"].filter(Boolean).join(" ")} hidden={!filtersOpen}>
+        <label><span>Status</span><select value={filters.status} onChange={event => updateFilter("status", event.target.value)}><option value="">All statuses</option>{Object.entries(tripStatus).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label><span>Vehicle</span><select value={filters.vehicleId} onChange={event => updateFilter("vehicleId", event.target.value)}><option value="">All vehicles</option>{resources.vehicles.map(vehicle => <option key={vehicle.id} value={vehicle.id}>{vehicle.registration_number}</option>)}</select></label>
+        <label><span>Driver</span><select value={filters.driverId} onChange={event => updateFilter("driverId", event.target.value)}><option value="">All drivers</option>{resources.drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.full_name}</option>)}</select></label>
+        <label><span>Customer</span><select value={filters.customerId} onChange={event => updateFilter("customerId", event.target.value)}><option value="">All customers</option>{resources.customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label>
+        <label><span>Material</span><input value={filters.material} onChange={event => updateFilter("material", event.target.value)} placeholder="Any material" /></label>
+        <label><span>Payment</span><select value={filters.paymentStatus} onChange={event => updateFilter("paymentStatus", event.target.value)}><option value="">Any payment status</option><option value="paid">Paid</option><option value="outstanding">Outstanding</option><option value="uninvoiced">Uninvoiced</option></select></label>
+        <label><span>From date</span><input type="date" value={filters.dateFrom} onChange={event => updateFilter("dateFrom", event.target.value)} /></label>
+        <label><span>To date</span><input type="date" value={filters.dateTo} onChange={event => updateFilter("dateTo", event.target.value)} /></label>
+        <button type="button" className="trip-clear-filters" onClick={clearFilters} disabled={!searchInput && !activeFilterCount && filters.sort === "newest"}><SlidersHorizontal size={14} /> Clear filters</button>
+      </div>
+      <div className="data-table-wrap trip-table-wrap" aria-busy={loading}>
+        <table className="data-table enterprise-table trip-data-table">
+          <thead><tr><th>Trip / date</th><th>Customer</th><th>Vehicle / driver</th><th>Material / weight</th><th>Route</th><th>Rate</th><th>Freight</th><th>Status</th><th className="data-actions-heading">Actions</th></tr></thead>
+          <tbody>
+            {records.map(trip => <tr key={trip.id} className="data-table-row">
+              <td><span className="data-primary-cell"><strong>{trip.trip_number}</strong><small>{trip.scheduled_start_at ? new Date(trip.scheduled_start_at).toLocaleDateString("en-IN") : "Date not set"}</small></span></td>
+              <td>{trip.customers?.name ?? trip.customer_name ?? "Not assigned"}</td>
+              <td><span className="data-primary-cell"><strong>{trip.vehicles?.registration_number ?? trip.vehicle_registration ?? "No truck"}</strong><small>{trip.drivers?.full_name ?? trip.driver_name ?? "No driver"}</small></span></td>
+              <td><span className="data-primary-cell"><strong>{trip.material_name ?? "Not recorded"}</strong><small>{Number(trip.quantity_tonnes) > 0 ? Number(trip.quantity_tonnes).toLocaleString("en-IN") + " tonnes" : "Weight not recorded"}</small></span></td>
+              <td><span className="trip-route-cell"><strong>{trip.origin}</strong><span>{trip.destination}</span></span></td>
+              <td><span className="data-primary-cell"><strong>{trip.rate_type.replace("_", " ")}</strong><small>@ {money(trip.rate)}</small></span></td>
+              <td className="data-money data-money-positive">{money(trip.freight_amount)}</td>
+              <td><span className={["status-pill", "status-" + trip.status.replace("_", "-")].join(" ")}>{tripStatus[trip.status] ?? trip.status}</span></td>
+              <td className="data-row-actions"><div className="live-record-actions"><button className="data-icon-button" title="Edit" aria-label={"Edit " + trip.trip_number} onClick={() => edit(trip)}><Pencil size={16} /></button><button className="data-icon-button live-delete-button" title="Delete" aria-label={"Delete " + trip.trip_number} onClick={() => void remove(trip)}><Trash2 size={16} /></button></div></td>
+            </tr>)}
+          </tbody>
+        </table>
+        {!loading && !records.length && <div className="data-empty"><Truck size={22} /><strong>No matching trips</strong><span>Try clearing a filter, adjusting your date range, or creating a new trip.</span></div>}
+        {loading && !records.length && <div className="trip-table-loading"><span className="trip-table-loading-dot" /><span>Loading trip records...</span></div>}
+      </div>
+      <footer className="trip-pagination">
+        <p>Showing <strong>{firstRecord.toLocaleString("en-IN")}–{lastRecord.toLocaleString("en-IN")}</strong> of <strong>{pagination.total.toLocaleString("en-IN")}</strong> trips</p>
+        <nav aria-label="Trip pages" className="trip-page-navigation">
+          <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={loading || pagination.page <= 1}><ChevronLeft size={14} /> Previous</button>
+          <div className="trip-page-numbers">
+            {pageNumbers.map((number, index) => <span className="trip-page-slot" key={number}>{index > 0 && number - pageNumbers[index - 1] > 1 && <span className="trip-page-gap" aria-hidden="true">...</span>}<button type="button" aria-label={"Page " + number} aria-current={pagination.page === number ? "page" : undefined} className={pagination.page === number ? "trip-page-active" : ""} onClick={() => setPage(number)} disabled={loading}>{number}</button></span>)}
+          </div>
+          <button type="button" onClick={() => setPage(current => Math.min(pagination.totalPages, current + 1))} disabled={loading || pagination.page >= pagination.totalPages}>Next <ChevronRight size={14} /></button>
+        </nav>
+      </footer>
+    </section>
     <AnimatePresence>{open && <Modal title={editing ? "Edit trip" : "Create trip"} subtitle="Select trip details and optionally add multiple linked expenses." saving={saving} valid={Boolean(form.trip_number && form.scheduled_start_at && form.customer_id && (form.customer_id !== "__new__" || newParty.name.trim()) && form.origin && form.destination && form.material_name && form.quantity_tonnes && form.rate && tripExpenses.every(expense => Number(expense.amount) > 0))} onClose={() => setOpen(false)} onSave={() => void save()}>
       <div className="vehicle-form-grid transport-form">
         <label><span>Trip number</span><input value={form.trip_number} onChange={e => setForm({ ...form, trip_number: e.target.value })} /></label>

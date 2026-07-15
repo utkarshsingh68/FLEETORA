@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsDateString, IsEmail, IsIn, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Matches, MaxLength, Min } from 'class-validator';
 
 class DtoBase { [key: string]: unknown; }
 
@@ -51,6 +51,31 @@ export class TripDto extends DtoBase {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) distance_km?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) empty_distance_km?: number;
   @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+}
+
+/**
+ * Query contract for the enterprise Trips register.  This intentionally uses
+ * a separate route so existing clients of GET /trips keep receiving the
+ * original array response.
+ */
+export class PaginatedTripsQueryDto extends DtoBase {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  // The service normalizes requested sizes to 25, 50, or 100.  Do not cap it
+  // here: accepting a larger requested value and safely clamping it keeps the
+  // API resilient for old or manually constructed links.
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) pageSize?: number;
+  @IsOptional() @IsString() @MaxLength(120) search?: string;
+  @IsOptional() @IsIn(['scheduled', 'loading', 'in_transit', 'delivered', 'delayed', 'cancelled']) status?: string;
+  @IsOptional() @IsUUID() vehicleId?: string;
+  @IsOptional() @IsUUID() driverId?: string;
+  @IsOptional() @IsUUID() customerId?: string;
+  @IsOptional() @IsString() @MaxLength(160) material?: string;
+  // Payment state is derived from invoices because trips do not own a payment
+  // status column. "outstanding" means sent, partial, or overdue.
+  @IsOptional() @IsIn(['paid', 'outstanding', 'uninvoiced', 'draft', 'sent', 'partial', 'overdue', 'void']) paymentStatus?: string;
+  @IsOptional() @IsString() @Matches(/^\d{4}-\d{2}-\d{2}$/) dateFrom?: string;
+  @IsOptional() @IsString() @Matches(/^\d{4}-\d{2}-\d{2}$/) dateTo?: string;
+  @IsOptional() @IsIn(['newest', 'oldest', 'freight', 'driver', 'vehicle']) sort?: string;
 }
 
 export class CostDto extends DtoBase {
