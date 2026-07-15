@@ -735,6 +735,18 @@ a.data-table-primary { color: #2563eb; }
 .transport-form .transport-expense-toggle { align-items: center; background: #f8fafc; border: 1px solid var(--app-line); border-radius: 10px; display: flex; gap: 10px; min-height: 46px; padding: 10px 13px; }
 .transport-form .transport-expense-toggle input[type="checkbox"] { accent-color: #2563eb; height: 18px; min-height: 18px; padding: 0; width: 18px; }
 .transport-form .transport-expense-toggle span { color: var(--app-ink); font-size: 12px; }
+.trip-expenses-editor { background: #f8fafc; border: 1px solid var(--app-line); border-radius: 11px; display: grid; gap: 10px; padding: 12px; }
+.trip-expenses-heading { align-items: center; display: flex; justify-content: space-between; gap: 12px; }
+.trip-expenses-heading > div { display: grid; gap: 2px; }
+.trip-expenses-heading strong { color: var(--app-ink); font-size: 12px; }
+.trip-expenses-heading span, .trip-expenses-empty { color: var(--app-muted); font-size: 9px; }
+.trip-expense-row { align-items: end; background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 9px; display: grid; gap: 8px; grid-template-columns: auto 1.05fr .8fr .9fr 1.2fr auto; padding: 9px; }
+.trip-expense-number { align-self: center; color: #2563eb; font-size: 10px; font-weight: 800; }
+.trip-expense-row label { gap: 4px; }
+.trip-expense-row label > span { font-size: 8px; }
+.trip-expense-row select, .trip-expense-row input { height: 36px; min-height: 36px; }
+.trip-expense-remove { align-self: center; color: #dc2626; }
+.trip-expenses-empty { border: 1px dashed var(--app-line); border-radius: 8px; padding: 12px; text-align: center; }
 .transport-calculation { align-content: center; background: linear-gradient(135deg,#eff6ff,#f8fafc); border: 1px solid #bfdbfe; border-radius: 10px; display: grid; gap: 3px; min-height: 64px; padding: 10px 13px; }
 .transport-calculation span { color: #64748b; font-size: 8px; font-weight: 650; }
 .transport-calculation strong { color: #1d4ed8; font-size: 17px; }
@@ -754,4 +766,4 @@ a.data-table-primary { color: #2563eb; }
 .status-delivered { background:#ecfdf5;color:#047857; }
 .status-cancelled { background:#fef2f2;color:#b91c1c; }
 @media (max-width: 980px) { .report-panels { grid-template-columns:1fr; } }
-@media (max-width: 650px) { .transport-dialog { width:calc(100vw - 20px); } .report-filter { align-items:flex-start; flex-direction:column; } }
+@media (max-width: 650px) { .transport-dialog { width:calc(100vw - 20px); } .report-filter { align-items:flex-start; flex-direction:column; } .trip-expenses-heading { align-items: stretch; flex-direction: column; } .trip-expense-row { grid-template-columns: auto 1fr; } .trip-expense-row label { grid-column: 2; } .trip-expense-remove { grid-column: 2; justify-self: end; } }
