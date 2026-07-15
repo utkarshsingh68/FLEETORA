@@ -28,6 +28,10 @@ export class ErpController {
     return this.erp.updateVehicle(req.user.companyId, req.user.token, id, body);
   }
 
+  @Delete('vehicles/:id')
+  @Roles('owner', 'admin')
+  deleteVehicle(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteVehicle(req.user.companyId, req.user.token, id); }
+
   @Get('trips')
   trips(@Req() req: FleetoraRequest, @Query('limit') limit = '25', @Query('status') status?: string) { return this.erp.trips(req.user.companyId, req.user.token, Number(limit), status); }
 
@@ -46,6 +50,10 @@ export class ErpController {
   @Roles('owner', 'admin', 'dispatcher', 'accountant')
   updateCustomer(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateCustomer(req.user.companyId, req.user.token, id, body); }
 
+  @Delete('customers/:id')
+  @Roles('owner', 'admin')
+  deleteCustomer(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteCustomer(req.user.companyId, req.user.token, id); }
+
   @Get('drivers')
   drivers(@Req() req: FleetoraRequest, @Query('limit') limit = '100') { return this.erp.drivers(req.user.companyId, req.user.token, Number(limit)); }
 
@@ -57,12 +65,20 @@ export class ErpController {
   @Roles('owner', 'admin', 'dispatcher')
   updateDriver(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateDriver(req.user.companyId, req.user.token, id, body); }
 
+  @Delete('drivers/:id')
+  @Roles('owner', 'admin')
+  deleteDriver(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteDriver(req.user.companyId, req.user.token, id); }
+
   @Get('resources')
   resources(@Req() req: FleetoraRequest) { return this.erp.resources(req.user.companyId, req.user.token); }
 
   @Patch('trips/:id')
   @Roles('owner', 'admin', 'dispatcher')
   updateTrip(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateTrip(req.user.companyId, req.user.token, id, body); }
+
+  @Delete('trips/:id')
+  @Roles('owner', 'admin')
+  deleteTrip(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteTrip(req.user.companyId, req.user.token, id); }
 
   @Get('fuel')
   fuel(@Req() req: FleetoraRequest) { return this.erp.fuelEntries(req.user.companyId, req.user.token); }
@@ -100,6 +116,14 @@ export class ErpController {
   @Post('ledger/payments')
   @Roles('owner', 'admin', 'accountant')
   payment(@Req() req: FleetoraRequest, @Body() body: Record<string, unknown>) { return this.erp.recordPayment(req.user.companyId, req.user.token, body); }
+
+  @Patch('ledger/payments/:id')
+  @Roles('owner', 'admin', 'accountant')
+  updatePayment(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) { return this.erp.updateLedgerEntry(req.user.companyId, req.user.token, id, body); }
+
+  @Delete('ledger/payments/:id')
+  @Roles('owner', 'admin')
+  deletePayment(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteLedgerEntry(req.user.companyId, req.user.token, id); }
 
   @Get('reports')
   reports(@Req() req: FleetoraRequest) { return this.erp.reports(req.user.companyId, req.user.token); }

@@ -37,6 +37,10 @@ export class ErpService {
     return this.db.update('vehicles', token, { id: `eq.${vehicleId}`, company_id: `eq.${companyId}` }, changes);
   }
 
+  deleteVehicle(companyId: string, token: string, id: string) {
+    return this.db.delete('vehicles', token, { id: `eq.${id}`, company_id: `eq.${companyId}` });
+  }
+
   createDriver(companyId: string, token: string, body: Record<string, unknown>) {
     return this.db.insert('drivers', token, this.clean(body, ['full_name', 'phone', 'license_number', 'license_expiry', 'emergency_contact', 'salary', 'status'], companyId));
   }
@@ -45,12 +49,20 @@ export class ErpService {
     return this.db.update('drivers', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['full_name', 'phone', 'license_number', 'license_expiry', 'emergency_contact', 'salary', 'status']));
   }
 
+  deleteDriver(companyId: string, token: string, id: string) {
+    return this.db.delete('drivers', token, { id: `eq.${id}`, company_id: `eq.${companyId}` });
+  }
+
   createCustomer(companyId: string, token: string, body: Record<string, unknown>) {
     return this.db.insert('customers', token, this.clean(body, ['name', 'contact_name', 'email', 'phone', 'credit_limit', 'payment_terms_days', 'status'], companyId));
   }
 
   updateCustomer(companyId: string, token: string, id: string, body: Record<string, unknown>) {
     return this.db.update('customers', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['name', 'contact_name', 'email', 'phone', 'credit_limit', 'payment_terms_days', 'status']));
+  }
+
+  deleteCustomer(companyId: string, token: string, id: string) {
+    return this.db.delete('customers', token, { id: `eq.${id}`, company_id: `eq.${companyId}` });
   }
 
   moduleRecords(companyId: string, token: string, module: string, limit = 100) {
@@ -80,6 +92,11 @@ export class ErpService {
 
   updateTrip(companyId: string, token: string, id: string, body: Record<string, unknown>) {
     return this.db.update('trips', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'quantity_tonnes', 'distance_km', 'notes']));
+  }
+
+  async deleteTrip(companyId: string, token: string, id: string) {
+    await this.db.delete('party_ledger', token, { trip_id: `eq.${id}`, company_id: `eq.${companyId}`, entry_type: 'eq.debit' });
+    return this.db.delete('trips', token, { id: `eq.${id}`, company_id: `eq.${companyId}` });
   }
 
   fuelEntries(companyId: string, token: string) {
@@ -112,6 +129,14 @@ export class ErpService {
 
   recordPayment(companyId: string, token: string, body: Record<string, unknown>) {
     return this.db.insert('party_ledger', token, this.clean({ ...body, entry_type: 'credit' }, ['customer_id', 'entry_date', 'entry_type', 'amount', 'payment_mode', 'reference', 'notes'], companyId));
+  }
+
+  updateLedgerEntry(companyId: string, token: string, id: string, body: Record<string, unknown>) {
+    return this.db.update('party_ledger', token, { id: `eq.${id}`, company_id: `eq.${companyId}`, entry_type: 'eq.credit' }, this.clean(body, ['customer_id', 'entry_date', 'amount', 'payment_mode', 'reference', 'notes']));
+  }
+
+  deleteLedgerEntry(companyId: string, token: string, id: string) {
+    return this.db.delete('party_ledger', token, { id: `eq.${id}`, company_id: `eq.${companyId}`, entry_type: 'eq.credit' });
   }
 
   async reports(companyId: string, token: string) {
