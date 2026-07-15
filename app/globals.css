@@ -731,6 +731,9 @@ a.data-table-primary { color: #2563eb; }
 .transport-form select, .transport-form input { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 9px; color: var(--app-ink); font: inherit; height: 42px; outline: 0; padding: 0 11px; width: 100%; }
 .transport-form select:focus, .transport-form input:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 .transport-form input[type="file"] { height: auto; padding: 9px 11px; }
+.transport-form .transport-expense-toggle { align-items: center; background: #f8fafc; border: 1px solid var(--app-line); border-radius: 10px; display: flex; gap: 10px; min-height: 46px; padding: 10px 13px; }
+.transport-form .transport-expense-toggle input[type="checkbox"] { accent-color: #2563eb; height: 18px; min-height: 18px; padding: 0; width: 18px; }
+.transport-form .transport-expense-toggle span { color: var(--app-ink); font-size: 12px; }
 .transport-calculation { align-content: center; background: linear-gradient(135deg,#eff6ff,#f8fafc); border: 1px solid #bfdbfe; border-radius: 10px; display: grid; gap: 3px; min-height: 64px; padding: 10px 13px; }
 .transport-calculation span { color: #64748b; font-size: 8px; font-weight: 650; }
 .transport-calculation strong { color: #1d4ed8; font-size: 17px; }
