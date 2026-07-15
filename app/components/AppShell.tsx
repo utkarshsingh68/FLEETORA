@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Activity,
+  ArchiveRestore,
   BarChart3,
   BatteryCharging,
   Bell,
@@ -25,6 +26,7 @@ import {
   Handshake,
   Headphones,
   LayoutDashboard,
+  LoaderCircle,
   LogOut,
   Mail,
   Menu,
@@ -53,8 +55,12 @@ import { DashboardView } from "./DashboardView";
 import { ModuleView } from "./ModuleView";
 import { EnterpriseModuleView, enterpriseRoutes } from "./EnterpriseModuleView";
 import { supabase } from "../lib/supabase";
+import { fleetoraApi } from "../lib/api";
+import { AccessContext, type FleetoraRole } from "../lib/access";
 
 type AppShellProps = { route: string };
+type WorkspaceContext = { activeCompanyId: string; memberships: Array<{ company_id: string; branch_id?: string | null; role: string; companies?: { id: string; name: string; legal_name?: string | null } | null }>; branches: Array<{ id: string; name: string; code: string }> };
+type PortalContext = { companyId: string; customerId: string | null; role: string; customer: { id: string; name: string; contact_name?: string | null; email?: string | null; phone?: string | null } | null };
 
 type NavItem = {
   label: string;
@@ -93,6 +99,7 @@ const navigation: { label: string; items: NavItem[] }[] = [
       { label: "Vendors", route: "vendors", icon: Warehouse },
       { label: "Digital LR", route: "digital-lr", icon: FileSignature },
       { label: "Invoices", route: "invoices", icon: ReceiptIndianRupee },
+      { label: "Customer Portal", route: "customer-portal", icon: UsersRound },
     ],
   },
   {
@@ -121,9 +128,17 @@ const navigation: { label: string; items: NavItem[] }[] = [
       { label: "Branches", route: "branches", icon: Warehouse },
       { label: "Roles", route: "roles", icon: ShieldCheck },
       { label: "Activity Logs", route: "activity-logs", icon: Activity },
+      { label: "Recycle Bin", route: "recycle-bin", icon: ArchiveRestore },
       { label: "Settings", route: "settings", icon: Settings },
       { label: "Support", route: "support", icon: Headphones },
     ],
+  },
+];
+
+const customerNavigation: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Customer workspace",
+    items: [{ label: "My transport portal", route: "customer-portal", icon: UsersRound }],
   },
 ];
 
@@ -139,9 +154,9 @@ const quickAddSchema = z.object({
 
 type QuickAddValues = z.infer<typeof quickAddSchema>;
 
-function Brand() {
+function Brand({ customerPortal = false }: { customerPortal?: boolean }) {
   return (
-    <Link href="/dashboard" className="app-brand" aria-label="Fleetora dashboard">
+    <Link href={customerPortal ? "/customer-portal" : "/dashboard"} className="app-brand" aria-label={customerPortal ? "Fleetora customer portal" : "Fleetora dashboard"}>
       <span className="app-brand-mark"><Truck size={19} strokeWidth={2.1} /></span>
       <span className="app-brand-copy">
         <strong>Fleetora</strong>
@@ -239,18 +254,24 @@ export function AppShell({ route }: AppShellProps) {
   const [profileName, setProfileName] = useState("Fleetora user");
   const [profileEmail, setProfileEmail] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
-  const activeLabel = routeLabels[route] ?? "Workspace";
+  const [workspace, setWorkspace] = useState<WorkspaceContext | null>(null);
+  const [portalContext, setPortalContext] = useState<PortalContext | null>(null);
+  const [accessResolved, setAccessResolved] = useState(false);
+  const [accessError, setAccessError] = useState("");
+  const isPortalCustomer = portalContext?.role === "customer";
+  const visibleNavigation = isPortalCustomer ? customerNavigation : navigation;
+  const activeLabel = isPortalCustomer ? "Customer portal" : routeLabels[route] ?? "Workspace";
 
   const commandItems = useMemo(() => {
-    const items = navigation.flatMap((group) => group.items);
+    const items = visibleNavigation.flatMap((group) => group.items);
     if (!query.trim()) return items.slice(0, 8);
     const normalized = query.toLowerCase();
     return items.filter((item) => item.label.toLowerCase().includes(normalized));
-  }, [query]);
+  }, [query, visibleNavigation]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      if (!isPortalCustomer && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setCommandOpen((open) => !open);
       }
@@ -262,7 +283,48 @@ export function AppShell({ route }: AppShellProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isPortalCustomer]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const portal = await fleetoraApi<PortalContext>("/portal/context", {}, { skipWorkspaceHeaders: true });
+        if (cancelled) return;
+        setPortalContext(portal);
+        if (portal.role === "customer") {
+          window.localStorage.setItem("fleetora-company-id", portal.companyId);
+          window.localStorage.removeItem("fleetora-branch-id");
+          if (route !== "customer-portal") {
+            window.location.replace("/customer-portal");
+            return;
+          }
+        } else {
+          const context = await fleetoraApi<WorkspaceContext>("/workspace/context");
+          if (cancelled) return;
+          setWorkspace(context);
+          if (!window.localStorage.getItem("fleetora-company-id")) window.localStorage.setItem("fleetora-company-id", context.activeCompanyId);
+        }
+        setAccessError("");
+      } catch (cause) {
+        if (!cancelled) setAccessError(cause instanceof Error ? cause.message : "Your account access could not be verified.");
+      } finally {
+        if (!cancelled) setAccessResolved(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [route]);
+
+  function switchCompany(companyId: string) {
+    window.localStorage.setItem("fleetora-company-id", companyId);
+    window.localStorage.removeItem("fleetora-branch-id");
+    window.location.reload();
+  }
+
+  function switchBranch(branchId: string) {
+    if (branchId) window.localStorage.setItem("fleetora-branch-id", branchId); else window.localStorage.removeItem("fleetora-branch-id");
+    window.location.reload();
+  }
 
   useEffect(() => {
     if (!toast) return;
@@ -311,9 +373,20 @@ export function AppShell({ route }: AppShellProps) {
   }
 
   const profileInitials = profileName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "FU";
+  const activeRole = (workspace?.memberships.find(membership => membership.company_id === workspace.activeCompanyId)?.role ?? "viewer") as FleetoraRole;
+  const customerInitials = portalContext?.customer?.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "CU";
+
+  if (!accessResolved || (isPortalCustomer && route !== "customer-portal")) {
+    return <div className="app-access-state"><LoaderCircle className="dashboard-spin" size={28} /><strong>Opening your secure workspace</strong><span>Checking account access...</span></div>;
+  }
+
+  if (accessError) {
+    return <div className="app-access-state app-access-error" role="alert"><ShieldCheck size={28} /><strong>We could not verify your workspace</strong><span>{accessError}</span><div><button className="button secondary-button" onClick={() => window.location.reload()}>Try again</button><button className="button primary-button" onClick={() => void logout()}>Sign in again</button></div></div>;
+  }
 
   return (
-    <div className={`app-shell${dark ? " theme-dark" : ""}`}>
+    <AccessContext.Provider value={isPortalCustomer ? "viewer" : activeRole}>
+    <div className={`app-shell${dark ? " theme-dark" : ""}${isPortalCustomer ? " customer-shell" : ""}`}>
       <AnimatePresence>
         {mobileOpen && (
           <motion.button
@@ -329,18 +402,26 @@ export function AppShell({ route }: AppShellProps) {
 
       <aside className={`app-sidebar${mobileOpen ? " is-open" : ""}`}>
         <div className="sidebar-top">
-          <Brand />
+          <Brand customerPortal={isPortalCustomer} />
           <button className="icon-button sidebar-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={18} /></button>
         </div>
 
-        <button className="company-switcher" type="button">
-          <span className="company-avatar">FW</span>
-          <span className="company-copy"><strong>Fleetora Workspace</strong><small>Live account</small></span>
-          <ChevronDown size={15} />
-        </button>
+        {isPortalCustomer ? (
+          <div className="portal-customer-identity" aria-label="Customer account">
+            <span className="company-avatar">{customerInitials}</span>
+            <span className="company-copy"><strong>{portalContext?.customer?.name ?? "Customer account"}</strong><small>Secure customer workspace</small></span>
+            <ShieldCheck size={15} />
+          </div>
+        ) : (
+          <div className="company-switcher workspace-context-switcher">
+            <span className="company-avatar">FW</span>
+            <span className="company-copy"><select aria-label="Active company" value={workspace?.activeCompanyId ?? ""} onChange={event => switchCompany(event.target.value)}>{workspace?.memberships.map(membership => <option key={membership.company_id} value={membership.company_id}>{membership.companies?.name ?? "Fleetora Workspace"} · {membership.role}</option>)}</select>{workspace?.branches.length ? <select aria-label="Active branch" defaultValue={typeof window !== "undefined" ? window.localStorage.getItem("fleetora-branch-id") ?? "" : ""} onChange={event => switchBranch(event.target.value)}><option value="">All branches</option>{workspace.branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select> : <small>Live account</small>}</span>
+            <ChevronDown size={15} />
+          </div>
+        )}
 
         <nav className="sidebar-nav" aria-label="Primary navigation">
-          {navigation.map((group) => (
+          {visibleNavigation.map((group) => (
             <div className="nav-group" key={group.label}>
               <span className="nav-group-label">{group.label}</span>
               {group.items.map((item) => {
@@ -389,16 +470,16 @@ export function AppShell({ route }: AppShellProps) {
         <header className="app-topbar">
           <div className="topbar-context">
             <button className="icon-button mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={19} /></button>
-            <div className="breadcrumb"><span>Fleetora Workspace</span><b>/</b><strong>{activeLabel}</strong></div>
+            <div className="breadcrumb"><span>{isPortalCustomer ? portalContext?.customer?.name ?? "Customer account" : "Fleetora Workspace"}</span><b>/</b><strong>{activeLabel}</strong></div>
           </div>
 
           <div className="topbar-actions">
-            <button className="global-search" onClick={() => setCommandOpen(true)} aria-label="Search Fleetora">
+            {!isPortalCustomer && <button className="global-search" onClick={() => setCommandOpen(true)} aria-label="Search Fleetora">
               <Search size={16} />
               <span>Search anything…</span>
               <kbd><Command size={11} /> K</kbd>
-            </button>
-            <button className="button primary-button topbar-add" onClick={() => window.location.assign("/fleet?new=true")}><Plus size={16} /> <span>Add vehicle</span></button>
+            </button>}
+            {!isPortalCustomer && <button className="button primary-button topbar-add" onClick={() => window.location.assign("/fleet?new=true")}><Plus size={16} /> <span>Add vehicle</span></button>}
             <button className="icon-button notification-button" aria-label="View notifications"><Bell size={18} /><span /></button>
             <button className="icon-button" onClick={() => setDark((value) => !value)} aria-label={dark ? "Use light theme" : "Use dark theme"}>
               {dark ? <Sun size={18} /> : <Moon size={18} />}
@@ -418,7 +499,7 @@ export function AppShell({ route }: AppShellProps) {
       </div>
 
       <AnimatePresence>
-        {(commandOpen || quickOpen) && (
+        {!isPortalCustomer && (commandOpen || quickOpen) && (
           <motion.button
             className="modal-backdrop"
             aria-label="Close dialog"
@@ -431,7 +512,7 @@ export function AppShell({ route }: AppShellProps) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {commandOpen && (
+        {!isPortalCustomer && commandOpen && (
           <motion.div
             className="command-palette"
             role="dialog"
@@ -455,7 +536,7 @@ export function AppShell({ route }: AppShellProps) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {quickOpen && <QuickAddForm onClose={() => setQuickOpen(false)} onComplete={setToast} />}
+        {!isPortalCustomer && quickOpen && <QuickAddForm onClose={() => setQuickOpen(false)} onComplete={setToast} />}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -483,5 +564,6 @@ export function AppShell({ route }: AppShellProps) {
         )}
       </AnimatePresence>
     </div>
+    </AccessContext.Provider>
   );
 }

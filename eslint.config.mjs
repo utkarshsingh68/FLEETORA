@@ -7,10 +7,23 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
+    // Framework and package-manager output:
+    "**/node_modules/**",
     ".next/**",
+    ".vinext/**",
     "out/**",
     "build/**",
+    "**/dist/**",
+    ".wrangler/**",
+    ".pnpm-store*/**",
+    ".runtime/**",
+
+    // Local task and generated artifact caches:
+    ".agents/**",
+    ".codex/**",
+    "outputs/**",
+    "work/**",
+    "coverage/**",
     "next-env.d.ts",
   ]),
 ]);

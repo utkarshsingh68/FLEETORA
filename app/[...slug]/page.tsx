@@ -39,6 +39,8 @@ const appRoutes = new Set([
   "activity-logs",
   "settings",
   "support",
+  "customer-portal",
+  "recycle-bin",
 ]);
 
 export async function generateMetadata({ params }: RouteProps): Promise<Metadata> {

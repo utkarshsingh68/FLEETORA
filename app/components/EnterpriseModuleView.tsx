@@ -2,6 +2,7 @@
 
 import { LiveModuleView } from "./LiveModuleView";
 import { TransportAccountingView, transportAccountingRoutes } from "./TransportAccountingView";
+import { GrowthOperationsView, growthRoutes } from "./GrowthOperationsView";
 
 const moduleNames: Record<string, string> = {
   brokers: "Broker network",
@@ -9,6 +10,7 @@ const moduleNames: Record<string, string> = {
   fastag: "FASTag control",
   gps: "GPS tracking",
   workshop: "Workshop",
+  maintenance: "Maintenance control",
   tyres: "Tyre lifecycle",
   batteries: "Battery management",
   "digital-lr": "Digital LR",
@@ -21,10 +23,12 @@ const moduleNames: Record<string, string> = {
   branches: "Branch management",
   "audit-logs": "Audit logs",
   "activity-logs": "Activity logs",
+  "customer-portal": "Customer portal",
+  "recycle-bin": "Recycle bin",
 };
 
 export const enterpriseRoutes = new Set(Object.keys(moduleNames));
 
 export function EnterpriseModuleView({ route }: { route: string }) {
-  return transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
+  return growthRoutes.has(route) ? <GrowthOperationsView route={route} /> : transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
 }

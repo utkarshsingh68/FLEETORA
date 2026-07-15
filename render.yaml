@@ -18,8 +18,58 @@ services:
         sync: false
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
       - key: CORS_ORIGIN
         value: https://fleetora-web-utkarsh.onrender.com
+      - key: CUSTOMER_PORTAL_REDIRECT_URL
+        value: https://fleetora-web-utkarsh.onrender.com/customer-portal
+
+  - type: worker
+    name: fleetora-report-worker-utkarsh
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    buildCommand: npm install --include=dev --prefix server && npm run build --prefix server
+    startCommand: npm run start:reports --prefix server
+    maxShutdownDelaySeconds: 300
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.23.1
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: REPORT_STORAGE_BUCKET
+        value: fleetora-reports
+      - key: REPORT_WORKER_POLL_MS
+        value: 60000
+      - key: REPORT_WORKER_BATCH_SIZE
+        value: 5
+      - key: REPORT_WORKER_LEASE_MS
+        value: 900000
+      - key: REPORT_SIGNED_URL_TTL_SECONDS
+        value: 604800
+      - key: REPORT_REQUEST_TIMEOUT_MS
+        value: 120000
+      - key: REPORT_MAX_ROWS
+        value: 50000
+      - key: REPORT_MAX_PDF_ROWS
+        value: 10000
+      - key: RESEND_API_KEY
+        sync: false
+      - key: REPORT_FROM_EMAIL
+        sync: false
 
   - type: web
     name: fleetora-web-utkarsh

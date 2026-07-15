@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
-import { SupabaseAuthGuard, RolesGuard } from './rbac';
+import { CustomerPortalGuard, SupabaseAuthGuard, RolesGuard } from './rbac';
 import { AuthController } from './auth.controller';
 
-@Module({ controllers: [AuthController], providers: [SupabaseAuthGuard, RolesGuard], exports: [SupabaseAuthGuard, RolesGuard] })
+@Module({
+  controllers: [AuthController],
+  providers: [SupabaseAuthGuard, CustomerPortalGuard, RolesGuard],
+  exports: [SupabaseAuthGuard, CustomerPortalGuard, RolesGuard],
+})
 export class AuthModule {}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowRight, Building2, CalendarDays, ChevronRight, Clock3,
   IndianRupee, MapPin, Navigation, Plus, RefreshCw, Route, Truck,
@@ -52,7 +52,7 @@ export function DashboardView({ onQuickAdd }: DashboardViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -70,9 +70,12 @@ export function DashboardView({ onQuickAdd }: DashboardViewProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void loadDashboard(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadDashboard(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadDashboard]);
 
   const cards = useMemo(() => [
     { label: "Fleet vehicles", value: String(kpis?.vehicles ?? 0), icon: Truck, tone: "blue", note: "Registered vehicles" },

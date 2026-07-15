@@ -5,7 +5,8 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: false });
+  // Razorpay signatures are calculated over the exact request bytes.
+  const app = await NestFactory.create(AppModule, { cors: false, rawBody: true });
   app.use(helmet());
   app.enableCors({ origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:3000'], credentials: true });
   app.setGlobalPrefix('api');

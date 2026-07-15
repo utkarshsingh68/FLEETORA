@@ -20,12 +20,15 @@ import {
   UserRound,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { fleetoraApi } from "../lib/api";
 
 export type AuthVariant = "login" | "register" | "forgot";
 
 export interface AuthPageProps {
   variant: AuthVariant;
 }
+
+type LoginPortalContext = { companyId: string; customerId: string | null; role: string };
 
 const variantCopy: Record<
   AuthVariant,
@@ -76,9 +79,9 @@ function LoginForm() {
     setPending(true);
     setFeedback(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setPending(false);
 
     if (error) {
+      setPending(false);
       setFeedback(
         error.message.toLowerCase().includes("invalid login")
           ? "We couldn’t sign you in. Check your email and password, then try again."
@@ -87,7 +90,17 @@ function LoginForm() {
       return;
     }
 
-    window.location.assign("/dashboard");
+    try {
+      // Ignore stale company/branch selections from an earlier browser session
+      // while determining whether this identity is staff or a portal customer.
+      const context = await fleetoraApi<LoginPortalContext>("/portal/context", {}, { skipWorkspaceHeaders: true });
+      window.localStorage.setItem("fleetora-company-id", context.companyId);
+      window.localStorage.removeItem("fleetora-branch-id");
+      window.location.assign(context.role === "customer" ? "/customer-portal" : "/dashboard");
+    } catch (cause) {
+      setPending(false);
+      setFeedback(cause instanceof Error ? cause.message : "Your account context could not be loaded. Please try again.");
+    }
   }
 
   return (

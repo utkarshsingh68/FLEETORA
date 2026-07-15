@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Database, Gauge, Pencil, Plus, Search, Trash2, Truck, Wrench, X } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
+import { useAccess } from "../lib/access";
 import { LiveModuleView } from "./LiveModuleView";
 import { TransportAccountingView, transportAccountingRoutes } from "./TransportAccountingView";
 
@@ -26,23 +27,7 @@ type VehicleForm = {
 };
 
 const EMPTY_FORM: VehicleForm = { registration_number: "", make_model: "", capacity_tonnes: "", status: "available", current_location: "" };
-const emptyModuleNames: Record<string, string> = {
-  trips: "Trip control", drivers: "Driver workforce", maintenance: "Maintenance control", documents: "Compliance vault",
-  customers: "Customer accounts", vendors: "Vendor network", finance: "Finance desk", fuel: "Fuel intelligence",
-  reports: "Reports studio", notifications: "Activity centre", settings: "Workspace settings", support: "Support centre",
-};
 const statusLabel = (status: VehicleStatus) => status === "on_trip" ? "On trip" : status.charAt(0).toUpperCase() + status.slice(1);
-
-function EmptyConnectedModule({ route }: { route: string }) {
-  const title = emptyModuleNames[route] ?? "Fleetora module";
-  return (
-    <motion.main className={`module-page module-page-${route}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      <header className="module-header"><div className="module-header-copy"><div className="module-eyebrow"><Database size={15} /> Live workspace</div><h1>{title}</h1><p>This module will display only records from its connected backend service.</p></div><button className="module-button module-button-primary" disabled title="Backend connection required"><Plus size={16} /> Add record</button></header>
-      <section className="module-kpis">{["Total records", "Active", "Needs attention", "Updated today"].map((label) => <article className="module-kpi module-tone-blue" key={label}><span className="module-kpi-icon"><Database size={18} /></span><div className="module-kpi-copy"><span>{label}</span><strong>0</strong><small>No live records</small></div></article>)}</section>
-      <div className="module-content-grid"><section className="module-data-panel"><div className="module-section-heading"><div><h2>Operational records</h2><p>Only database records will appear here.</p></div><span className="module-record-count">0 records</span></div><div className="data-empty data-empty-large"><Search size={22} /><strong>No live data yet</strong><span>This module is ready for its backend connection. No demo records are included.</span></div></section><aside className="panel-insight"><div className="panel-insight-heading"><span className="panel-insight-icon"><Database size={16} /></span><span>Live data</span></div><h2>Backend connection required</h2><p>Insights will be calculated only from records stored in your workspace.</p><div className="panel-insight-metric"><strong>0</strong><span>live records</span></div></aside></div>
-    </motion.main>
-  );
-}
 
 function VehicleDialog({ value, editing, saving, error, onChange, onClose, onSave }: { value: VehicleForm; editing: boolean; saving: boolean; error: string | null; onChange: (value: VehicleForm) => void; onClose: () => void; onSave: () => void }) {
   return <div className="vehicle-modal-layer"><button className="modal-backdrop" aria-label="Close vehicle editor" onClick={onClose} /><section className="vehicle-dialog" role="dialog" aria-modal="true" aria-labelledby="vehicle-title"><div className="vehicle-dialog-header"><div><span className="module-eyebrow"><Truck size={15} /> Fleet asset</span><h2 id="vehicle-title">{editing ? "Edit vehicle" : "Add vehicle"}</h2><p>{editing ? "Update this live database record." : "Register a vehicle in your workspace."}</p></div><button className="data-icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button></div><div className="vehicle-form-grid">
@@ -55,6 +40,7 @@ function VehicleDialog({ value, editing, saving, error, onChange, onClose, onSav
 }
 
 function FleetView() {
+  const access = useAccess();
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +51,19 @@ function FleetView() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function load() { setLoading(true); setError(null); try { setVehicles(await fleetoraApi<ApiVehicle[]>("/vehicles?limit=100")); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load fleet records."); } finally { setLoading(false); } }
-  useEffect(() => { void load(); if (new URLSearchParams(window.location.search).get("new") === "true") openNew(); }, []);
+  const load = useCallback(async () => { setLoading(true); setError(null); try { setVehicles(await fleetoraApi<ApiVehicle[]>("/vehicles?limit=100")); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load fleet records."); } finally { setLoading(false); } }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void load();
+      if (new URLSearchParams(window.location.search).get("new") === "true") {
+        setEditingId(null);
+        setForm(EMPTY_FORM);
+        setFormError(null);
+        setDialogOpen(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
   function openNew() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setDialogOpen(true); }
   function openEdit(vehicle: ApiVehicle) { setEditingId(vehicle.id); setForm({ registration_number: vehicle.registration_number, make_model: vehicle.make_model ?? "", capacity_tonnes: vehicle.capacity_tonnes === null ? "" : String(vehicle.capacity_tonnes), status: vehicle.status, current_location: vehicle.current_location ?? "" }); setFormError(null); setDialogOpen(true); }
   async function save() { setSaving(true); setFormError(null); const payload = { registration_number: form.registration_number.trim(), make_model: form.make_model.trim() || null, capacity_tonnes: form.capacity_tonnes ? Number(form.capacity_tonnes) : null, status: form.status, current_location: form.current_location.trim() || null }; try { await fleetoraApi(editingId ? `/vehicles/${editingId}` : "/vehicles", { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) }); setDialogOpen(false); await load(); } catch (cause) { setFormError(cause instanceof Error ? cause.message : "Could not save this vehicle."); } finally { setSaving(false); } }
@@ -77,7 +74,7 @@ function FleetView() {
   const maintenance = vehicles.filter((vehicle) => vehicle.status === "maintenance").length;
   const capacity = vehicles.reduce((sum, vehicle) => sum + (Number(vehicle.capacity_tonnes) || 0), 0);
 
-  return <motion.main className="module-page module-page-fleet" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><header className="module-header"><div className="module-header-copy"><div className="module-eyebrow"><Truck size={15} /> Asset operations</div><h1>Fleet command</h1><p>Live vehicle readiness, capacity, location, and status.</p></div><button className="module-button module-button-primary" onClick={openNew}><Plus size={16} /> Add vehicle</button></header>
+  return <motion.main className="module-page module-page-fleet" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><header className="module-header"><div className="module-header-copy"><div className="module-eyebrow"><Truck size={15} /> Asset operations</div><h1>Fleet command</h1><p>Live vehicle readiness, capacity, location, and status.</p></div>{access.canOperate && <button className="module-button module-button-primary" onClick={openNew}><Plus size={16} /> Add vehicle</button>}</header>
     <section className="module-kpis">{[
       { label: "Registered fleet", value: vehicles.length, detail: "Live database records", icon: Truck, tone: "blue" },
       { label: "Road ready", value: vehicles.length ? `${Math.round(available / vehicles.length * 100)}%` : "0%", detail: `${available} vehicles available`, icon: CheckCircle2, tone: "emerald" },
@@ -90,5 +87,5 @@ function FleetView() {
   </motion.main>;
 }
 
-export function ModuleView({ route }: { route: string }) { const module = route.toLowerCase().split("/")[0]; return module === "fleet" ? <FleetView /> : transportAccountingRoutes.has(module) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />; }
+export function ModuleView({ route }: { route: string }) { const moduleKey = route.toLowerCase().split("/")[0]; return moduleKey === "fleet" ? <FleetView /> : transportAccountingRoutes.has(moduleKey) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />; }
 export default ModuleView;

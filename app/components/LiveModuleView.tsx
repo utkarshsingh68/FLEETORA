@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Database, MoreHorizontal, Plus, Search, Trash2, X } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
@@ -30,8 +30,8 @@ type FormValue = { name: string; reference: string; status: string; notes: strin
 const emptyForm: FormValue = { name: "", reference: "", status: "active", notes: "", amount: "", event_date: "" };
 
 export function LiveModuleView({ route }: { route: string }) {
-  const module = route.toLowerCase().split("/")[0];
-  const title = labels[module] ?? "Fleetora module";
+  const moduleKey = route.toLowerCase().split("/")[0];
+  const title = labels[moduleKey] ?? "Fleetora module";
   const [records, setRecords] = useState<LiveRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +41,16 @@ export function LiveModuleView({ route }: { route: string }) {
   const [form, setForm] = useState<FormValue>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setRecords(await fleetoraApi<LiveRecord[]>(`/records/${encodeURIComponent(module)}`)); }
+    try { setRecords(await fleetoraApi<LiveRecord[]>(`/records/${encodeURIComponent(moduleKey)}`)); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load records."); }
     finally { setLoading(false); }
-  }
-  useEffect(() => { void load(); }, [module]);
+  }, [moduleKey]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const visible = useMemo(() => records.filter((record) => Object.values(record).some((value) => String(value ?? "").toLowerCase().includes(query.toLowerCase()))), [query, records]);
   const active = records.filter((record) => record.status.toLowerCase() === "active").length;
@@ -58,17 +61,17 @@ export function LiveModuleView({ route }: { route: string }) {
     if (!form.name.trim()) return;
     setSaving(true); setError(null);
     const payload = { name: form.name.trim(), reference: form.reference.trim() || null, status: form.status.trim() || "active", notes: form.notes.trim() || null, amount: form.amount ? Number(form.amount) : null, event_date: form.event_date || null };
-    try { await fleetoraApi(editingId ? `/records/${module}/${editingId}` : `/records/${module}`, { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) }); setOpen(false); await load(); }
+    try { await fleetoraApi(editingId ? `/records/${moduleKey}/${editingId}` : `/records/${moduleKey}`, { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) }); setOpen(false); await load(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save this record."); }
     finally { setSaving(false); }
   }
   async function remove(record: LiveRecord) {
     if (!window.confirm(`Delete “${record.name}”?`)) return;
-    try { await fleetoraApi<void>(`/records/${module}/${record.id}`, { method: "DELETE" }); await load(); }
+    try { await fleetoraApi<void>(`/records/${moduleKey}/${record.id}`, { method: "DELETE" }); await load(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not delete this record."); }
   }
 
-  return <motion.main className={`module-page module-page-${module}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+  return <motion.main className={`module-page module-page-${moduleKey}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
     <header className="module-header"><div className="module-header-copy"><div className="module-eyebrow"><Database size={15} /> Live workspace</div><h1>{title}</h1><p>Create, update, search, and manage records stored securely in your workspace.</p></div><button className="module-button module-button-primary" onClick={create}><Plus size={16} /> Add record</button></header>
     <section className="module-kpis">{[
       ["Total records", records.length], ["Active", active], ["Needs attention", records.length - active], ["Updated today", records.filter((r) => new Date(r.updated_at).toDateString() === new Date().toDateString()).length],

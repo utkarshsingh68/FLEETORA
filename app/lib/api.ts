@@ -2,7 +2,9 @@ import { supabase } from "./supabase";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-export async function fleetoraApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+type FleetoraApiOptions = { skipWorkspaceHeaders?: boolean };
+
+export async function fleetoraApi<T>(path: string, init: RequestInit = {}, options: FleetoraApiOptions = {}): Promise<T> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) throw new Error("Your session has expired. Please sign in again.");
@@ -11,6 +13,8 @@ export async function fleetoraApi<T>(path: string, init: RequestInit = {}): Prom
     ...init,
     headers: {
       authorization: `Bearer ${accessToken}`,
+      ...(!options.skipWorkspaceHeaders && typeof window !== "undefined" && window.localStorage.getItem("fleetora-company-id") ? { "x-company-id": window.localStorage.getItem("fleetora-company-id") as string } : {}),
+      ...(!options.skipWorkspaceHeaders && typeof window !== "undefined" && window.localStorage.getItem("fleetora-branch-id") ? { "x-branch-id": window.localStorage.getItem("fleetora-branch-id") as string } : {}),
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },
