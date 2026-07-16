@@ -170,7 +170,7 @@ export class ErpService {
   }
 
   ledger(companyId: string, token: string) {
-    return this.db.select('party_ledger', token, { select: '*,customers(name),trips(trip_number,material_name,gross_weight,tare_weight,quantity_tonnes)', company_id: `eq.${companyId}`, deleted_at: 'is.null', order: 'entry_date.desc', limit: 2000 });
+    return this.db.select('party_ledger', token, { select: '*,customers(name),trips(trip_number,material_name,destination,rate,gross_weight,tare_weight,quantity_tonnes)', company_id: `eq.${companyId}`, deleted_at: 'is.null', order: 'entry_date.desc', limit: 2000 });
   }
 
   recordPayment(companyId: string, token: string, body: Record<string, unknown>) {
