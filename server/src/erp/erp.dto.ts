@@ -47,6 +47,8 @@ export class TripDto extends DtoBase {
   @IsOptional() @IsIn(['scheduled', 'loading', 'in_transit', 'delivered', 'delayed', 'cancelled']) status?: string;
   @IsOptional() @IsIn(['fixed', 'per_ton', 'per_km']) rate_type?: string;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) rate?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) gross_weight?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) tare_weight?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) quantity_tonnes?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) distance_km?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) empty_distance_km?: number;
