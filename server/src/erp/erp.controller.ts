@@ -152,6 +152,12 @@ export class ErpController {
     return this.erp.reportsSummary(req.user.companyId, req.user.token, start, end);
   }
 
+  @Get('reports/trips')
+  tripDetails(@Req() req: FleetoraRequest, @Query('from') from?: string, @Query('to') to?: string) {
+    const [start, end] = this.reportPeriod(from, to);
+    return this.erp.tripDetailReport(req.user.companyId, req.user.token, start, end);
+  }
+
   @Get('reports/fuel-efficiency')
   fuelEfficiency(@Req() req: FleetoraRequest, @Query('from') from?: string, @Query('to') to?: string) {
     // Fuel analytics default to complete history. The editable /fuel register

@@ -34,6 +34,7 @@ export class CustomerDto extends DtoBase {
 
 export class TripDto extends DtoBase {
   @IsOptional() @IsString() @MaxLength(64) trip_number?: string;
+  @IsOptional() @IsString() @MaxLength(80) rst_number?: string;
   @IsOptional() @IsUUID() customer_id?: string;
   @IsOptional() @IsUUID() vehicle_id?: string;
   @IsOptional() @IsUUID() driver_id?: string;

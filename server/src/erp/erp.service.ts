@@ -133,11 +133,11 @@ export class ErpService {
   }
 
   createTrip(companyId: string, token: string, body: Record<string, unknown>) {
-    return this.db.insert('trips', token, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'gross_weight', 'tare_weight', 'quantity_tonnes', 'distance_km', 'empty_distance_km', 'notes'], companyId));
+    return this.db.insert('trips', token, this.clean(body, ['trip_number', 'rst_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'gross_weight', 'tare_weight', 'quantity_tonnes', 'distance_km', 'empty_distance_km', 'notes'], companyId));
   }
 
   updateTrip(companyId: string, token: string, id: string, body: Record<string, unknown>) {
-    return this.db.update('trips', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['trip_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'gross_weight', 'tare_weight', 'quantity_tonnes', 'distance_km', 'empty_distance_km', 'notes']));
+    return this.db.update('trips', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['trip_number', 'rst_number', 'customer_id', 'vehicle_id', 'driver_id', 'origin', 'destination', 'material_name', 'scheduled_start_at', 'scheduled_end_at', 'actual_start_at', 'actual_end_at', 'status', 'rate_type', 'rate', 'gross_weight', 'tare_weight', 'quantity_tonnes', 'distance_km', 'empty_distance_km', 'notes']));
   }
 
   async deleteTrip(companyId: string, token: string, id: string, actorId?: string) {
@@ -170,7 +170,7 @@ export class ErpService {
   }
 
   ledger(companyId: string, token: string) {
-    return this.db.select('party_ledger', token, { select: '*,customers(name),trips(trip_number,material_name,destination,rate,gross_weight,tare_weight,quantity_tonnes)', company_id: `eq.${companyId}`, deleted_at: 'is.null', order: 'entry_date.desc', limit: 2000 });
+    return this.db.select('party_ledger', token, { select: '*,customers(name),trips(trip_number,rst_number,material_name,destination,rate,gross_weight,tare_weight,quantity_tonnes)', company_id: `eq.${companyId}`, deleted_at: 'is.null', order: 'entry_date.desc', limit: 2000 });
   }
 
   recordPayment(companyId: string, token: string, body: Record<string, unknown>) {
@@ -204,6 +204,14 @@ export class ErpService {
    */
   reportsSummary(companyId: string, token: string, from: string, to: string) {
     return this.profitability(companyId, token, from, to);
+  }
+
+  tripDetailReport(companyId: string, token: string, from: string, to: string) {
+    return this.db.rpc<Record<string, unknown>[]>('fleetora_trip_detail_report', token, {
+      p_company_id: companyId,
+      p_from: from,
+      p_to: to,
+    });
   }
 
   fuelEfficiency(companyId: string, token: string, from: string, to: string) {
