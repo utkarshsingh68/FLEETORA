@@ -44,12 +44,12 @@ export class IntelligenceService {
 
   async ask(companyId: string, token: string, question: string) {
     const snapshot = await this.overview(companyId, token);
-    const apiKey = this.config.get<string>('OPENAI_API_KEY');
+    const apiKey = this.config.get<string>('GROQ_API_KEY');
     if (!apiKey) return { answer: this.localAnswer(question, snapshot), source: 'fleetora-rules', configured: false };
     try {
-      return { answer: await this.openAiAnswer(apiKey, question, snapshot), source: 'openai', configured: true };
+      return { answer: await this.groqAnswer(apiKey, question, snapshot), source: 'groq', configured: true };
     } catch (error) {
-      const detail = error instanceof Error ? error.message : 'Unknown OpenAI error';
+      const detail = error instanceof Error ? error.message : 'Unknown Groq error';
       if (/401|invalid.*key|authentication/i.test(detail)) throw new ServiceUnavailableException('Fleetora AI key is invalid or unavailable.');
       return { answer: this.localAnswer(question, snapshot), source: 'fleetora-rules', configured: true };
     }
@@ -115,14 +115,14 @@ export class IntelligenceService {
     return `This month's Fleetora summary: ${snapshot.summary.trips} completed trips, ${money(snapshot.summary.revenue)} revenue, ${money(snapshot.summary.cost)} cost, and ${money(snapshot.summary.profit)} profit. Ask about a party balance, top truck, unusual weights, profitability, or maintenance.`;
   }
 
-  private async openAiAnswer(apiKey: string, question: string, snapshot: IntelligenceSnapshot) {
+  private async groqAnswer(apiKey: string, question: string, snapshot: IntelligenceSnapshot) {
     const tools = [tool('get_party_balances', 'Get read-only party outstanding balances.'), tool('get_top_trucks', 'Get truck revenue, cost, and profit rankings for this month.'), tool('get_fraud_alerts', 'Get duplicate, weight, rate, and high-cost alerts.'), tool('get_profitability_advice', 'Get route, empty-running, and pricing recommendations.'), tool('get_maintenance_risks', 'Get overdue and upcoming maintenance risks.'), tool('get_month_summary', 'Get the current month operational and financial summary.')];
-    const model = this.config.get<string>('OPENAI_MODEL') || 'gpt-5-mini';
-    let response = await this.openAiRequest(apiKey, { model, instructions: 'You are Fleetora AI, a concise transport operations analyst. Use only supplied read-only tools. Never invent records or claim to change data. Show INR amounts clearly and say when data is insufficient.', input: question, tools });
+    const model = this.config.get<string>('GROQ_MODEL') || 'openai/gpt-oss-20b';
+    let response = await this.groqRequest(apiKey, { model, instructions: 'You are Fleetora AI, a concise transport operations analyst. Use only supplied read-only tools. Never invent records or claim to change data. Show INR amounts clearly and say when data is insufficient.', input: question, tools });
     for (let turn = 0; turn < 4; turn += 1) {
       const calls = Array.isArray(response.output) ? (response.output as DataRow[]).filter(item => item.type === 'function_call') : [];
       if (!calls.length) return responseText(response) || this.localAnswer(question, snapshot);
-      response = await this.openAiRequest(apiKey, { model, previous_response_id: response.id, input: calls.map(call => ({ type: 'function_call_output', call_id: text(call.call_id), output: JSON.stringify(this.toolResult(text(call.name), snapshot)) })), tools });
+      response = await this.groqRequest(apiKey, { model, previous_response_id: response.id, input: calls.map(call => ({ type: 'function_call_output', call_id: text(call.call_id), output: JSON.stringify(this.toolResult(text(call.name), snapshot)) })), tools });
     }
     return responseText(response) || this.localAnswer(question, snapshot);
   }
@@ -131,9 +131,9 @@ export class IntelligenceService {
     if (name === 'get_party_balances') return snapshot.partyBalances; if (name === 'get_top_trucks') return snapshot.topTrucks; if (name === 'get_fraud_alerts') return snapshot.fraudAlerts; if (name === 'get_profitability_advice') return snapshot.profitabilityAdvice; if (name === 'get_maintenance_risks') return snapshot.maintenanceRisks; return { period: snapshot.period, summary: snapshot.summary };
   }
 
-  private async openAiRequest(apiKey: string, body: Record<string, unknown>): Promise<DataRow> {
-    const response = await fetch('https://api.openai.com/v1/responses', { method: 'POST', headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    if (!response.ok) throw new Error(`OpenAI request failed (${response.status}): ${await response.text()}`);
+  private async groqRequest(apiKey: string, body: Record<string, unknown>): Promise<DataRow> {
+    const response = await fetch('https://api.groq.com/openai/v1/responses', { method: 'POST', headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error(`Groq request failed (${response.status}): ${await response.text()}`);
     return response.json() as Promise<DataRow>;
   }
 }
