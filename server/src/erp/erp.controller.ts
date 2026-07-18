@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard, SupabaseAuthGuard } from '../auth/rbac';
 import { ErpService } from './erp.service';
-import { CostDto, CustomerDto, DisputeDto, DriverDto, MaintenanceDto, PaginatedTripsQueryDto, PartDto, PaymentDto, PortalRequestDto, ReportScheduleDto, TripDto, TyreDto, VehicleDto } from './erp.dto';
+import { CostDto, CustomerDto, DisputeDto, DocumentDto, DriverDto, MaintenanceDto, PaginatedTripsQueryDto, PartDto, PaymentDto, PortalRequestDto, ReportScheduleDto, TripDto, TyreDto, VehicleDto } from './erp.dto';
 
 type FleetoraRequest = { user: { id: string; companyId: string; branchId?: string; role: string; token: string } };
 
@@ -78,6 +78,21 @@ export class ErpController {
   @Delete('drivers/:id')
   @Roles('owner', 'admin')
   deleteDriver(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteDriver(req.user.companyId, req.user.token, id, req.user.id); }
+
+  @Get('documents')
+  documents(@Req() req: FleetoraRequest) { return this.erp.documents(req.user.companyId, req.user.token); }
+
+  @Post('documents')
+  @Roles('owner', 'admin', 'dispatcher')
+  createDocument(@Req() req: FleetoraRequest, @Body() body: DocumentDto) { return this.erp.createDocument(req.user.companyId, req.user.token, body); }
+
+  @Patch('documents/:id')
+  @Roles('owner', 'admin', 'dispatcher')
+  updateDocument(@Req() req: FleetoraRequest, @Param('id') id: string, @Body() body: DocumentDto) { return this.erp.updateDocument(req.user.companyId, req.user.token, id, body); }
+
+  @Delete('documents/:id')
+  @Roles('owner', 'admin')
+  deleteDocument(@Req() req: FleetoraRequest, @Param('id') id: string) { return this.erp.deleteDocument(req.user.companyId, req.user.token, id, req.user.id); }
 
   @Get('resources')
   resources(@Req() req: FleetoraRequest) { return this.erp.resources(req.user.companyId, req.user.token); }

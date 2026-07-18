@@ -4,6 +4,7 @@ import { LiveModuleView } from "./LiveModuleView";
 import { TransportAccountingView, transportAccountingRoutes } from "./TransportAccountingView";
 import { GrowthOperationsView, growthRoutes } from "./GrowthOperationsView";
 import { FleetoraIntelligenceView } from "./FleetoraIntelligenceView";
+import { DocumentComplianceView } from "./DocumentComplianceView";
 
 const moduleNames: Record<string, string> = {
   brokers: "Broker network",
@@ -32,5 +33,5 @@ const moduleNames: Record<string, string> = {
 export const enterpriseRoutes = new Set(Object.keys(moduleNames));
 
 export function EnterpriseModuleView({ route }: { route: string }) {
-  return route === "ai-assistant" ? <FleetoraIntelligenceView /> : growthRoutes.has(route) ? <GrowthOperationsView route={route} /> : transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
+  return route === "ai-assistant" ? <FleetoraIntelligenceView /> : route === "documents" ? <DocumentComplianceView /> : growthRoutes.has(route) ? <GrowthOperationsView route={route} /> : transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
 }

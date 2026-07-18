@@ -99,6 +99,22 @@ export class ErpService {
     return this.softDelete('drivers', companyId, token, id, actorId);
   }
 
+  documents(companyId: string, token: string) {
+    return this.db.select('documents', token, { select: '*,vehicles(registration_number),drivers(full_name)', company_id: `eq.${companyId}`, deleted_at: 'is.null', order: 'expires_on.asc.nullslast', limit: 500 });
+  }
+
+  createDocument(companyId: string, token: string, body: Record<string, unknown>) {
+    return this.db.insert('documents', token, this.clean(body, ['vehicle_id', 'driver_id', 'document_type', 'document_number', 'issued_on', 'expires_on', 'storage_path', 'status'], companyId));
+  }
+
+  updateDocument(companyId: string, token: string, id: string, body: Record<string, unknown>) {
+    return this.db.update('documents', token, { id: `eq.${id}`, company_id: `eq.${companyId}` }, this.clean(body, ['vehicle_id', 'driver_id', 'document_type', 'document_number', 'issued_on', 'expires_on', 'storage_path', 'status']));
+  }
+
+  deleteDocument(companyId: string, token: string, id: string, actorId?: string) {
+    return this.softDelete('documents', companyId, token, id, actorId);
+  }
+
   createCustomer(companyId: string, token: string, body: Record<string, unknown>) {
     return this.db.insert('customers', token, this.clean(body, ['name', 'contact_name', 'email', 'phone', 'credit_limit', 'payment_terms_days', 'status'], companyId));
   }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowRight, Building2, CalendarDays, ChevronRight, Clock3,
-  IndianRupee, MapPin, Navigation, Plus, RefreshCw, Route, Truck,
+  AlertTriangle, IndianRupee, MapPin, Navigation, Plus, RefreshCw, Route, Sparkles, Truck,
   type LucideIcon,
 } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
@@ -18,6 +18,7 @@ const formatCompactINR = (value: number, maximumFractionDigits = 1) => new Intl.
 }).format(value);
 
 type DashboardKpis = { vehicles: number; runningTrips: number; customers: number; receivable: number };
+type OwnerIntelligence = { dailySummary: { date: string; trips: number; revenue: number; cost: number; profit: number; overdueVehicles: number; unpaidCustomers: number; message: string }; documentRisks: Array<{ id: string; severity: string; title: string; description: string }> };
 type ApiTrip = {
   id: string;
   trip_number: string;
@@ -48,6 +49,7 @@ export interface DashboardViewProps { onQuickAdd: () => void }
 export function DashboardView({ onQuickAdd }: DashboardViewProps) {
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [trips, setTrips] = useState<ApiTrip[]>([]);
+  const [intelligence, setIntelligence] = useState<OwnerIntelligence | null>(null);
   const [name, setName] = useState("there");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,13 +58,15 @@ export function DashboardView({ onQuickAdd }: DashboardViewProps) {
     setLoading(true);
     setError(null);
     try {
-      const [liveKpis, liveTrips, session] = await Promise.all([
+      const [liveKpis, liveTrips, ownerIntelligence, session] = await Promise.all([
         fleetoraApi<DashboardKpis>("/dashboard/kpis"),
         fleetoraApi<ApiTrip[]>("/trips?limit=8"),
+        fleetoraApi<OwnerIntelligence>("/intelligence/overview"),
         supabase?.auth.getSession(),
       ]);
       setKpis(liveKpis);
       setTrips(liveTrips);
+      setIntelligence(ownerIntelligence);
       const metadataName = session?.data.session?.user.user_metadata?.full_name;
       if (typeof metadataName === "string" && metadataName.trim()) setName(metadataName.trim().split(" ")[0]);
     } catch (cause) {
@@ -125,6 +129,8 @@ export function DashboardView({ onQuickAdd }: DashboardViewProps) {
           <button onClick={() => void loadDashboard()} type="button">Try again</button>
         </section>
       )}
+
+      {intelligence && <section className="owner-daily-summary" aria-label="Daily owner summary"><span className="owner-summary-icon"><Sparkles size={20} /></span><div><small>Daily owner summary</small><strong>{intelligence.dailySummary.message}</strong><p>{intelligence.documentRisks.length ? <><AlertTriangle size={14} /> {intelligence.documentRisks.length} document expiry alert{intelligence.documentRisks.length === 1 ? "" : "s"} need attention.</> : "All tracked compliance documents are currently clear."}</p></div><Link href="/ai-assistant">View intelligence <ArrowRight size={14} /></Link></section>}
 
       <section className="dash-kpi-section" aria-label="Live key performance indicators">
         <div className="kpi-grid">

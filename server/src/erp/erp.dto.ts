@@ -22,6 +22,17 @@ export class DriverDto extends DtoBase {
   @IsOptional() @IsIn(['available', 'on_trip', 'on_leave', 'off_duty']) status?: string;
 }
 
+export class DocumentDto extends DtoBase {
+  @IsOptional() @IsUUID() vehicle_id?: string;
+  @IsOptional() @IsUUID() driver_id?: string;
+  @IsOptional() @IsIn(['insurance', 'rc', 'fitness', 'permit', 'tax', 'puc', 'license', 'pod', 'other']) document_type?: string;
+  @IsOptional() @IsString() @MaxLength(120) document_number?: string;
+  @IsOptional() @IsDateString() issued_on?: string;
+  @IsOptional() @IsDateString() expires_on?: string;
+  @IsOptional() @IsString() @MaxLength(500) storage_path?: string;
+  @IsOptional() @IsIn(['active', 'expiring', 'expired']) status?: string;
+}
+
 export class CustomerDto extends DtoBase {
   @IsOptional() @IsString() @MaxLength(160) name?: string;
   @IsOptional() @IsString() @MaxLength(120) contact_name?: string;

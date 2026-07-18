@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, RefreshCw, Send, ShieldCheck, Sparkles, TrendingUp, Wrench } from "lucide-react";
+import { AlertTriangle, FileWarning, RefreshCw, Send, ShieldCheck, Sparkles, TrendingUp, UserRoundCheck, Wrench } from "lucide-react";
 import { fleetoraApi } from "../lib/api";
 
 type Insight = { id: string; category: string; severity: "critical" | "warning" | "info"; title: string; description: string; entity?: string; value?: number };
@@ -14,9 +14,12 @@ type IntelligenceOverview = {
   fraudAlerts: Insight[];
   profitabilityAdvice: Insight[];
   maintenanceRisks: Insight[];
+  documentRisks: Insight[];
+  driverRisks: Array<{ driverId: string; name: string; score: number; level: string; trips: number; reasons: string[] }>;
+  dailySummary: { date: string; trips: number; revenue: number; cost: number; profit: number; overdueVehicles: number; unpaidCustomers: number; message: string };
 };
 
-const quickQuestions = ["How much does my highest-outstanding party owe?", "Which truck earned the most this month?", "Show trips with unusual weight differences.", "Which vehicles need maintenance soon?"];
+const quickQuestions = ["Give me today's owner summary.", "Show driver risk scores.", "Which documents expire soon?", "Show trips with unusual weight differences."];
 const money = (value: number) => `INR ${Number(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 export function FleetoraIntelligenceView() {
@@ -50,6 +53,7 @@ export function FleetoraIntelligenceView() {
     <section className="module-kpis" aria-label="Intelligence summary">
       {[["Completed trips", summary?.trips ?? 0], ["Month profit", money(summary?.profit ?? 0)], ["Risk alerts", summary?.fraudAlerts ?? 0], ["Maintenance risks", summary?.maintenanceRisks ?? 0]].map(([label, value]) => <article className="module-kpi module-tone-blue" key={String(label)}><span className="module-kpi-icon"><Sparkles size={18} /></span><div className="module-kpi-copy"><span>{String(label)}</span><strong>{String(value)}</strong><small>{overview ? `${overview.period.from} to ${overview.period.to}` : "Loading current month"}</small></div></article>)}
     </section>
+    {overview?.dailySummary && <section className="owner-daily-summary"><span className="owner-summary-icon"><Sparkles size={20} /></span><div><small>Today&apos;s owner briefing</small><strong>{overview.dailySummary.message}</strong><p>Profit today: {money(overview.dailySummary.profit)}</p></div></section>}
     <section className="module-data-panel intelligence-assistant-panel">
       <div className="module-section-heading"><div><h2>Ask Fleetora</h2><p>The assistant can only read your active company data; it cannot edit or delete records.</p></div><span className="module-record-count">Read only</span></div>
       <div className="intelligence-quick-questions">{quickQuestions.map(item => <button key={item} type="button" onClick={() => void ask(item)} disabled={asking}>{item}</button>)}</div>
@@ -60,6 +64,8 @@ export function FleetoraIntelligenceView() {
       <InsightPanel icon={AlertTriangle} title="Trip error and fraud detection" subtitle="Duplicate RST, weight mismatch, unusual rates and high costs" rows={overview?.fraudAlerts ?? []} empty="No trip-risk alerts detected this month." />
       <InsightPanel icon={TrendingUp} title="Profitability advisor" subtitle="Loss-making routes, empty running and minimum-rate guidance" rows={overview?.profitabilityAdvice ?? []} empty="Complete trips with costs and distance to receive recommendations." />
       <InsightPanel icon={Wrench} title="Predictive maintenance watch" subtitle="Overdue, high-priority and next-30-day maintenance risk" rows={overview?.maintenanceRisks ?? []} empty="No open maintenance risks detected." />
+      <InsightPanel icon={FileWarning} title="Document expiry alerts" subtitle="Expired and next-30-day vehicle or driver documents" rows={overview?.documentRisks ?? []} empty="No compliance documents expire in the next 30 days." />
+      <section className="module-data-panel"><div className="module-section-heading"><div><h2>Driver risk score</h2><p>Breakdowns, fuel efficiency, trip costs and document violations</p></div><UserRoundCheck size={18} /></div><div className="driver-risk-list">{(overview?.driverRisks ?? []).slice(0, 8).map(row => <article key={row.driverId}><span className={`driver-risk-score driver-risk-${row.level}`}>{row.score}</span><div><strong>{row.name}</strong><small>{row.level} risk · {row.trips} trips</small><p>{row.reasons.join(" · ")}</p></div></article>)}{!overview?.driverRisks.length && <p className="intelligence-empty">Add drivers and trip history to calculate risk.</p>}</div></section>
       <section className="module-data-panel"><div className="module-section-heading"><div><h2>Top trucks</h2><p>Ranked by current-month profit</p></div><ShieldCheck size={18} /></div><div className="intelligence-ranking">{(overview?.topTrucks ?? []).slice(0, 6).map((truck, index) => <div key={truck.name}><span>{index + 1}</span><div><strong>{truck.name}</strong><small>{truck.trips} trips · {money(truck.revenue)} revenue</small></div><b>{money(truck.profit)}</b></div>)}{!overview?.topTrucks.length && <p className="intelligence-empty">No completed truck records this month.</p>}</div></section>
     </div>
   </motion.main>;
