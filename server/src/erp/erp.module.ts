@@ -5,9 +5,11 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { PortalController } from './portal.controller';
 import { PortalService } from './portal.service';
+import { IntelligenceController } from '../intelligence/intelligence.controller';
+import { IntelligenceService } from '../intelligence/intelligence.service';
 
 @Module({
-  controllers: [ErpController, PortalController, PaymentsController],
-  providers: [ErpService, PortalService, PaymentsService],
+  controllers: [ErpController, PortalController, PaymentsController, IntelligenceController],
+  providers: [ErpService, PortalService, PaymentsService, IntelligenceService],
 })
 export class ErpModule {}

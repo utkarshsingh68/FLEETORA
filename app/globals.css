@@ -867,6 +867,37 @@ a.data-table-primary { color: #2563eb; }
   .trip-pagination { align-items: flex-start; flex-direction: column; gap: 10px; padding: 11px 12px; }
   .trip-page-navigation { justify-content: space-between; width: 100%; }
 }
+
+/* Fleetora Intelligence */
+.intelligence-assistant-panel { background: linear-gradient(145deg, color-mix(in srgb, #2563eb 7%, var(--app-surface)), var(--app-surface)); }
+.intelligence-quick-questions { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+.intelligence-quick-questions button { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 999px; color: var(--app-muted); cursor: pointer; font: inherit; font-size: 9px; padding: 7px 10px; }
+.intelligence-quick-questions button:hover { border-color: #93c5fd; color: #1d4ed8; }
+.intelligence-answer { align-items: flex-start; background: color-mix(in srgb, #2563eb 6%, var(--app-surface)); border: 1px solid color-mix(in srgb, #2563eb 18%, var(--app-line)); border-radius: 12px; display: flex; gap: 10px; min-height: 88px; padding: 14px; }
+.intelligence-answer > span { align-items: center; background: #2563eb; border-radius: 8px; color: white; display: inline-flex; height: 30px; justify-content: center; min-width: 30px; }
+.intelligence-answer p { color: var(--app-ink); font-size: 10px; line-height: 1.65; margin: 2px 0 0; white-space: pre-wrap; }
+.intelligence-prompt { align-items: center; display: flex; gap: 8px; margin-top: 10px; }
+.intelligence-prompt label { flex: 1; }
+.intelligence-prompt input { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 9px; color: var(--app-ink); font: inherit; font-size: 10px; height: 38px; outline: none; padding: 0 12px; width: 100%; }
+.intelligence-prompt input:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px color-mix(in srgb, #60a5fa 15%, transparent); }
+.intelligence-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.intelligence-insights { display: grid; gap: 8px; }
+.intelligence-insight { align-items: flex-start; border: 1px solid var(--app-line); border-left-width: 3px; border-radius: 9px; display: flex; gap: 9px; padding: 10px; }
+.intelligence-insight > span { border-radius: 999px; font-size: 7px; font-weight: 800; letter-spacing: .06em; padding: 4px 6px; text-transform: uppercase; }
+.intelligence-insight strong { color: var(--app-ink); display: block; font-size: 9px; }
+.intelligence-insight p { color: var(--app-muted); font-size: 8.5px; line-height: 1.5; margin: 3px 0 0; }
+.intelligence-critical { border-left-color: #ef4444; } .intelligence-critical > span { background: #fee2e2; color: #b91c1c; }
+.intelligence-warning { border-left-color: #f59e0b; } .intelligence-warning > span { background: #fef3c7; color: #92400e; }
+.intelligence-info { border-left-color: #3b82f6; } .intelligence-info > span { background: #dbeafe; color: #1d4ed8; }
+.intelligence-empty { color: var(--app-muted); font-size: 9px; margin: 8px 0; }
+.intelligence-ranking { display: grid; gap: 6px; }
+.intelligence-ranking > div { align-items: center; border-bottom: 1px solid var(--app-line); display: grid; gap: 9px; grid-template-columns: 24px 1fr auto; padding: 8px 2px; }
+.intelligence-ranking > div > span { align-items: center; background: color-mix(in srgb, #2563eb 9%, var(--app-surface)); border-radius: 7px; color: #2563eb; display: flex; font-size: 8px; font-weight: 800; height: 24px; justify-content: center; }
+.intelligence-ranking strong { color: var(--app-ink); display: block; font-size: 9px; }
+.intelligence-ranking small { color: var(--app-muted); font-size: 8px; }
+.intelligence-ranking b { color: var(--green); font-size: 9px; }
+@media (max-width: 900px) { .intelligence-grid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .intelligence-prompt { align-items: stretch; flex-direction: column; } .intelligence-prompt button { justify-content: center; } }
 @media (max-width: 460px) {
   .trip-query-toolbar { gap: 7px; }
   .trip-filter-grid { grid-template-columns: 1fr; }

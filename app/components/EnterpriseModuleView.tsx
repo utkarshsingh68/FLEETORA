@@ -3,6 +3,7 @@
 import { LiveModuleView } from "./LiveModuleView";
 import { TransportAccountingView, transportAccountingRoutes } from "./TransportAccountingView";
 import { GrowthOperationsView, growthRoutes } from "./GrowthOperationsView";
+import { FleetoraIntelligenceView } from "./FleetoraIntelligenceView";
 
 const moduleNames: Record<string, string> = {
   brokers: "Broker network",
@@ -25,10 +26,11 @@ const moduleNames: Record<string, string> = {
   "activity-logs": "Activity logs",
   "customer-portal": "Customer portal",
   "recycle-bin": "Recycle bin",
+  "ai-assistant": "Fleetora AI Assistant",
 };
 
 export const enterpriseRoutes = new Set(Object.keys(moduleNames));
 
 export function EnterpriseModuleView({ route }: { route: string }) {
-  return growthRoutes.has(route) ? <GrowthOperationsView route={route} /> : transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
+  return route === "ai-assistant" ? <FleetoraIntelligenceView /> : growthRoutes.has(route) ? <GrowthOperationsView route={route} /> : transportAccountingRoutes.has(route) ? <TransportAccountingView route={route} /> : <LiveModuleView route={route} />;
 }

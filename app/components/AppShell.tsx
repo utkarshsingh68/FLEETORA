@@ -38,6 +38,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Sun,
   Truck,
   Phone,
@@ -116,6 +117,7 @@ const navigation: { label: string; items: NavItem[] }[] = [
     label: "Intelligence",
     items: [
       { label: "Reports", route: "reports", icon: FileBarChart },
+      { label: "AI Assistant", route: "ai-assistant", icon: Sparkles, badge: "AI" },
       { label: "Analytics", route: "analytics", icon: BarChart3 },
       { label: "Notifications", route: "notifications", icon: Bell },
       { label: "Audit Logs", route: "audit-logs", icon: ShieldCheck },
