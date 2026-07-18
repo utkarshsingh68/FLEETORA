@@ -88,7 +88,7 @@ as $$
       (t.scheduled_start_at at time zone coalesce(nullif(company.timezone, ''), 'UTC'))::date,
       (t.created_at at time zone coalesce(nullif(company.timezone, ''), 'UTC'))::date
     ) between p_from and p_to
-  order by report_date desc, t.trip_number;
+  order by 24 desc, t.trip_number;
 $$;
 
 revoke all on function public.fleetora_trip_detail_report(uuid, date, date) from public, anon;
