@@ -23,6 +23,18 @@ type FuelEfficiencyReport = {
   vehicles: Array<{ vehicle_id: string | null; registration_number: string; entries: number; litres: number; amount: number; distance_km: number; km_per_litre: number | null; cost_per_km: number | null; last_odometer_km: number | null; last_filled_at: string | null }>;
   recent_entries: Array<{ id: string; vehicle_id: string | null; previous_odometer_km: number | null; odometer_km: number | null; distance_km: number | null; km_per_litre: number | null }>;
 };
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  abort: () => void;
+  onresult: null | ((event: { resultIndex: number; results: { length: number; [key: number]: { [key: number]: { transcript: string } } } }) => void);
+  onerror: null | ((event: { error?: string }) => void);
+  onnomatch: null | (() => void);
+  onend: null | (() => void);
+};
 type ScalableTrip = { id: string; trip_number: string; rst_number: string | null; vehicle_id: string | null; driver_id: string | null; customer_id: string | null; vehicle_registration: string | null; driver_name: string | null; customer_name: string | null; material_name: string | null; origin: string; destination: string; rate: number; gross_weight: number | null; tare_weight: number | null; quantity_tonnes: number; distance_km: number; empty_distance_km: number; total_distance_km: number; freight_amount: number; cost: number; status: string; scheduled_start_at: string | null; report_date: string };
 type ProfitDimension = { dimension: "truck" | "driver" | "customer" | "material" | "route"; entity_id: string | null; label: string; trips: number; weight_tonnes: number; distance_km: number; empty_distance_km: number; total_distance_km: number; revenue: number; cost: number; profit: number };
 type ScalableReport = { period: { from: string; to: string }; summary: { trips: number; revenue: number; cost: number; profit: number; loaded_km: number; empty_km: number; empty_running_pct: number }; trips: ScalableTrip[]; profitability: ProfitDimension[]; ageing: Array<{ customer_id: string; customer: string; balance: number; age_days: number; bucket: string; bucket_0_30: number; bucket_31_60: number; bucket_61_90: number; bucket_90_plus: number }>; utilization: Array<{ id: string; registration_number: string; completed_trips: number; active_days: number; period_days: number; loaded_km: number; empty_km: number; total_km: number; empty_running_pct: number; utilization_pct: number }> };
@@ -54,6 +66,7 @@ function TripView() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const requestIdRef = useRef(0);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const [form, setForm] = useState(empty); const [newParty, setNewParty] = useState({ name: "", phone: "", contact_name: "" }); const [tripExpenses, setTripExpenses] = useState<Array<ReturnType<typeof newTripExpense>>>([]); const [editing, setEditing] = useState<string | null>(null); const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false); const [scanning, setScanning] = useState(false); const [listening, setListening] = useState(false); const [assistMessage, setAssistMessage] = useState(""); const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -96,27 +109,60 @@ function TripView() {
   function edit(t: Trip) { setEditing(t.id); setTripExpenses([]); setForm({ trip_number: t.trip_number, rst_number: t.rst_number ?? "", customer_id: t.customer_id ?? "", vehicle_id: t.vehicle_id ?? "", driver_id: t.driver_id ?? "", origin: t.origin, destination: t.destination, material_name: t.material_name ?? "", status: t.status, rate_type: t.rate_type, rate: String(t.rate), gross_weight: t.gross_weight == null ? "" : String(t.gross_weight), tare_weight: t.tare_weight == null ? "" : String(t.tare_weight), quantity_tonnes: String(t.quantity_tonnes), distance_km: String(t.distance_km), empty_distance_km: String(t.empty_distance_km ?? 0), scheduled_start_at: t.scheduled_start_at?.slice(0, 10) ?? today(), notes: "" }); setOpen(true); }
   async function remove(t: Trip) { if (!window.confirm(`Delete trip “${t.trip_number}”? This cannot be undone.`)) return; try { await fleetoraApi(`/trips/${t.id}`, { method: "DELETE" }); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Could not delete trip."); } }
   function updateTripExpense(id: string, patch: Partial<ReturnType<typeof newTripExpense>>) { setTripExpenses(rows => rows.map(row => row.id === id ? { ...row, ...patch } : row)); }
-  function applyAssistedValues(values: TripAssistValues, source: string) {
+  function applyAssistedValues(values: TripAssistValues, source: string, transcript?: string) {
     const update: Partial<typeof empty> = {}; const keys: Array<keyof typeof empty> = ["rst_number", "origin", "destination", "material_name", "gross_weight", "tare_weight", "quantity_tonnes", "rate"];
     keys.forEach(key => { const value = values[key]; if (value) update[key] = value; });
     const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, "");
-    if (values.customer) { const match = resources.customers.find(row => normalize(row.name).includes(normalize(values.customer!)) || normalize(values.customer!).includes(normalize(row.name))); if (match) update.customer_id = match.id; }
+    if (values.customer) { const match = resources.customers.find(row => normalize(row.name).includes(normalize(values.customer!)) || normalize(values.customer!).includes(normalize(row.name))); if (match) update.customer_id = match.id; else { update.customer_id = "__new__"; setNewParty(current => ({ ...current, name: values.customer! })); } }
     if (values.vehicle) { const match = resources.vehicles.find(row => normalize(row.registration_number) === normalize(values.vehicle!)); if (match) update.vehicle_id = match.id; }
     if (values.driver) { const match = resources.drivers.find(row => normalize(row.full_name).includes(normalize(values.driver!)) || normalize(values.driver!).includes(normalize(row.full_name))); if (match) update.driver_id = match.id; }
-    setForm(current => ({ ...current, ...update })); setAssistMessage(`${source} filled ${Object.keys(update).length} trip field${Object.keys(update).length === 1 ? "" : "s"}. Please verify before saving.`);
+    const count = Object.keys(update).length;
+    if (!count) {
+      setAssistMessage(transcript ? `Heard: “${transcript}” — no trip fields were identified. Try: “Party Pankaj, from Patna to Gaya, material sand, gross 57 tonnes, tare 16 tonnes, rate 1350, RST 412.”` : `${source} could not identify any trip fields. Try a clear, straight photo showing the labels and values.`);
+      return 0;
+    }
+    setForm(current => ({ ...current, ...update }));
+    setError(null);
+    setAssistMessage(`${source} filled ${count} trip field${count === 1 ? "" : "s"}. Please check the highlighted form values before saving.`);
+    return count;
   }
   async function scanWeighbridge(file: File | null) {
-    if (!file) return; setScanning(true); setAssistMessage("Reading weighbridge slip on this device...");
-    try { const { recognize } = await import("tesseract.js"); const result = await recognize(file, "eng", { logger: message => { if (message.status === "recognizing text") setAssistMessage(`Reading slip: ${Math.round((message.progress ?? 0) * 100)}%`); } }); const values = parseWeighbridgeText(result.data.text); if (!Object.values(values).some(Boolean)) throw new Error("No RST or weight fields could be recognized. Try a clearer, straight photo."); applyAssistedValues(values, "Weighbridge scanner"); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Could not read this weighbridge slip."); } finally { setScanning(false); }
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setAssistMessage("Please select a JPG, PNG, or WebP image of the weighbridge slip."); return; }
+    setScanning(true); setError(null); setAssistMessage("Preparing the weighbridge scanner...");
+    let worker: Awaited<ReturnType<typeof import("tesseract.js")["createWorker"]>> | null = null;
+    try {
+      const tesseract = await import("tesseract.js");
+      worker = await tesseract.createWorker("eng", tesseract.OEM.LSTM_ONLY, { logger: message => { if (message.status === "recognizing text") setAssistMessage(`Reading slip: ${Math.round((message.progress ?? 0) * 100)}%`); } });
+      await worker.setParameters({ tessedit_pageseg_mode: tesseract.PSM.SPARSE_TEXT, preserve_interword_spaces: "1", user_defined_dpi: "300" });
+      const result = await worker.recognize(file, { rotateAuto: true });
+      const values = parseWeighbridgeText(result.data.text);
+      applyAssistedValues(values, "Weighbridge scanner");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Could not read this weighbridge slip.";
+      setAssistMessage(`Scanner error: ${message}. Check your internet connection and try a clearer photo.`);
+    } finally {
+      await worker?.terminate().catch(() => undefined);
+      setScanning(false);
+    }
   }
   function startVoice(language: "en-IN" | "hi-IN") {
-    type Recognition = { lang: string; continuous: boolean; interimResults: boolean; start: () => void; onresult: null | ((event: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => void); onerror: null | (() => void); onend: null | (() => void) };
-    const browser = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }; const Constructor = browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
-    if (!Constructor) { setError("Voice entry is not supported in this browser. Use Chrome or Edge."); return; }
-    const recognition = new Constructor(); recognition.lang = language; recognition.continuous = false; recognition.interimResults = false; setListening(true); setAssistMessage(language === "hi-IN" ? "हिंदी में ट्रिप की जानकारी बोलें..." : "Speak the trip details now...");
-    recognition.onresult = event => { const transcript = event.results[0]?.[0]?.transcript ?? ""; applyAssistedValues(parseVoiceTrip(transcript), language === "hi-IN" ? "Hindi voice" : "English voice"); };
-    recognition.onerror = () => setError("Voice entry could not hear the trip details. Please try again."); recognition.onend = () => setListening(false); recognition.start();
+    const browser = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }; const Constructor = browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
+    if (!Constructor) { setAssistMessage("Voice entry is not available in this browser. Open Fleetora in the latest Chrome or Edge and allow microphone access."); return; }
+    recognitionRef.current?.abort();
+    const recognition = new Constructor(); recognitionRef.current = recognition; recognition.lang = language; recognition.continuous = false; recognition.interimResults = false; recognition.maxAlternatives = 1; setListening(true); setError(null); setAssistMessage(language === "hi-IN" ? "माइक्रोफ़ोन चालू है — अब ट्रिप की जानकारी बोलें…" : "Microphone is on — speak the trip details now…");
+    recognition.onresult = event => {
+      const transcript = Array.from({ length: event.results.length - event.resultIndex }, (_, index) => event.results[event.resultIndex + index]?.[0]?.transcript ?? "").join(" ").trim();
+      if (!transcript) { setAssistMessage("No speech was received. Please speak closer to the microphone and try again."); return; }
+      applyAssistedValues(parseVoiceTrip(transcript), language === "hi-IN" ? "Hindi voice" : "English voice", transcript);
+    };
+    recognition.onnomatch = () => setAssistMessage("Speech was heard, but no trip details were recognized. Please use the example format shown above and try again.");
+    recognition.onerror = event => {
+      const messages: Record<string, string> = { "not-allowed": "Microphone permission is blocked. Allow microphone access for Fleetora in your browser settings.", "service-not-allowed": "Speech recognition is blocked by this browser. Use the latest Chrome or Edge.", "audio-capture": "No working microphone was found.", "no-speech": "No speech was detected. Please speak clearly and try again.", network: "Voice recognition needs an internet connection. Check the connection and try again." };
+      setAssistMessage(messages[event.error ?? ""] ?? "Voice entry stopped before trip details could be recognized. Please try again.");
+    };
+    recognition.onend = () => { setListening(false); if (recognitionRef.current === recognition) recognitionRef.current = null; };
+    try { recognition.start(); } catch { setListening(false); recognitionRef.current = null; setAssistMessage("The microphone could not start. Close other voice apps, allow microphone access, and try again."); }
   }
   async function save() { setSaving(true); try { let partyId = form.customer_id; if (partyId === "__new__") { const created = await fleetoraApi<Customer[]>("/customers", { method: "POST", body: JSON.stringify({ ...newParty, status: "active", credit_limit: 0, payment_terms_days: 30 }) }); partyId = created[0]?.id ?? ""; if (!partyId) throw new Error("The new party could not be created."); } const grossWeight = form.gross_weight === "" ? null : Number(form.gross_weight); const tareWeight = form.tare_weight === "" ? null : Number(form.tare_weight); if (grossWeight != null && tareWeight != null && tareWeight > grossWeight) throw new Error("Tare weight cannot be greater than gross weight."); const netWeight = grossWeight != null && tareWeight != null ? grossWeight - tareWeight : Number(form.quantity_tonnes); const body = { ...form, customer_id: partyId || null, vehicle_id: form.vehicle_id || null, driver_id: form.driver_id || null, rate: Number(form.rate), gross_weight: grossWeight, tare_weight: tareWeight, quantity_tonnes: netWeight, distance_km: Number(form.distance_km), empty_distance_km: Number(form.empty_distance_km), scheduled_start_at: form.scheduled_start_at || null, actual_end_at: form.status === "delivered" ? new Date().toISOString() : null }; const saved = await fleetoraApi<Trip[]>(editing ? `/trips/${editing}` : "/trips", { method: editing ? "PATCH" : "POST", body: JSON.stringify(body) }); const tripId = editing ?? saved[0]?.id; if (tripId && tripExpenses.length) { await Promise.all(tripExpenses.map(expense => fleetoraApi("/expenses", { method: "POST", body: JSON.stringify({ trip_id: tripId, vehicle_id: form.vehicle_id || null, category: expense.category, amount: Number(expense.amount), payment_mode: expense.payment_mode, expense_date: form.scheduled_start_at || today(), notes: expense.notes || null }) }))); } setOpen(false); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Could not save trip."); } finally { setSaving(false); } }
   const completedOnPage = records.filter(r => r.status === "delivered").reduce((sum, trip) => sum + Number(trip.freight_amount), 0);
@@ -207,7 +253,7 @@ function TripView() {
     </section>
     <AnimatePresence>{open && <Modal title={editing ? "Edit trip" : "Create trip"} subtitle="Select trip details and optionally add multiple linked expenses." saving={saving} valid={Boolean(form.scheduled_start_at && form.customer_id && (form.customer_id !== "__new__" || newParty.name.trim()) && form.origin && form.destination && form.material_name && form.quantity_tonnes && form.rate && (form.rate_type !== "per_km" || Number(form.distance_km) > 0) && tripExpenses.every(expense => Number(expense.amount) > 0))} onClose={() => setOpen(false)} onSave={() => void save()}>
       <div className="vehicle-form-grid transport-form">
-        <div className="vehicle-form-wide trip-input-assistant"><div><strong>Free smart trip entry</strong><span>Scan an RST slip or speak trip details in Hindi or English. Always verify recognized values.</span></div><div className="trip-input-assistant-actions"><label className={`module-button module-button-secondary ${scanning ? "trip-assist-disabled" : ""}`}><FileScan size={15} /> {scanning ? "Reading slip..." : "Scan weighbridge slip"}<input type="file" accept="image/*" capture="environment" disabled={scanning} onChange={event => { const file = event.target.files?.[0] ?? null; void scanWeighbridge(file); event.currentTarget.value = ""; }} /></label><button type="button" className="module-button module-button-secondary" disabled={listening} onClick={() => startVoice("en-IN")}><Mic size={15} /> Speak English</button><button type="button" className="module-button module-button-secondary" disabled={listening} onClick={() => startVoice("hi-IN")}><Mic size={15} /> हिंदी में बोलें</button></div>{assistMessage && <p>{assistMessage}</p>}</div>
+        <div className="vehicle-form-wide trip-input-assistant"><div><strong>Free smart trip entry</strong><span>Scan a clear RST slip or speak in this order: party, route, material, weights, rate, RST and truck.</span><span className="trip-input-example">Example: “Party Pankaj, from Patna to Gaya, material sand, gross 57 tonnes, tare 16 tonnes, rate 1350, RST 412.”</span></div><div className="trip-input-assistant-actions"><label className={`module-button module-button-secondary ${scanning ? "trip-assist-disabled" : ""}`}><FileScan size={15} /> {scanning ? "Reading slip..." : "Scan weighbridge slip"}<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={scanning} onChange={event => { const file = event.target.files?.[0] ?? null; void scanWeighbridge(file); event.currentTarget.value = ""; }} /></label><button type="button" className="module-button module-button-secondary" disabled={listening || scanning} onClick={() => startVoice("en-IN")}><Mic size={15} /> {listening ? "Listening…" : "Speak English"}</button><button type="button" className="module-button module-button-secondary" disabled={listening || scanning} onClick={() => startVoice("hi-IN")}><Mic size={15} /> {listening ? "सुन रहा है…" : "हिंदी में बोलें"}</button></div>{assistMessage && <p role="status" aria-live="polite">{assistMessage}</p>}</div>
         <label><span>Trip number</span><input value={editing ? form.trip_number : "Generated automatically for this party"} readOnly /></label>
         <label><span>RST number</span><input value={form.rst_number} onChange={e => setForm({ ...form, rst_number: e.target.value })} placeholder="Weighbridge / RST reference" /></label>
         <label><span>Trip date</span><input type="date" value={form.scheduled_start_at} onChange={e => setForm({ ...form, scheduled_start_at: e.target.value })} /></label>
