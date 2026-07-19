@@ -262,9 +262,6 @@ kbd { align-items: center; background: var(--app-surface); border: 1px solid var
 .vehicle-form-grid input, .vehicle-form-grid select { background: var(--app-surface); border: 1px solid var(--app-line); border-radius: 12px; color: var(--app-ink); font: inherit; min-height: 46px; outline: none; padding: 0 13px; width: 100%; }
 .vehicle-form-grid input:focus, .vehicle-form-grid select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .11); }
 .vehicle-form-wide { grid-column: 1 / -1; }
-.vehicle-document-heading { border-top: 1px solid var(--app-line); display: grid; gap: 4px; margin-top: 4px; padding-top: 18px; }
-.vehicle-document-heading strong { color: var(--app-ink); font-size: 14px; }
-.vehicle-document-heading span { color: var(--app-muted); font-size: 10px; font-weight: 500; line-height: 1.5; }
 .vehicle-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
 .vehicle-form-error, .module-inline-error { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; color: #b42334; font-size: 13px; margin-top: 16px; padding: 11px 13px; }
 .module-inline-error { margin: 0 20px 12px; }

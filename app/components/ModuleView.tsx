@@ -24,27 +24,10 @@ type VehicleForm = {
   capacity_tonnes: string;
   status: VehicleStatus;
   current_location: string;
-  insurance_expires_on: string;
-  fitness_expires_on: string;
-  permit_expires_on: string;
-  puc_expires_on: string;
-  tax_expires_on: string;
-  rc_expires_on: string;
 };
-type VehicleDocumentType = "insurance" | "fitness" | "permit" | "puc" | "tax" | "rc";
-type VehicleDocument = { id: string; vehicle_id: string | null; document_type: string; expires_on: string | null };
 
-const EMPTY_FORM: VehicleForm = { registration_number: "", make_model: "", capacity_tonnes: "", status: "available", current_location: "", insurance_expires_on: "", fitness_expires_on: "", permit_expires_on: "", puc_expires_on: "", tax_expires_on: "", rc_expires_on: "" };
-const VEHICLE_DOCUMENT_FIELDS: Array<{ type: VehicleDocumentType; key: keyof VehicleForm; label: string }> = [
-  { type: "insurance", key: "insurance_expires_on", label: "Insurance valid until" },
-  { type: "fitness", key: "fitness_expires_on", label: "Fitness valid until" },
-  { type: "permit", key: "permit_expires_on", label: "Permit valid until" },
-  { type: "puc", key: "puc_expires_on", label: "PUC valid until" },
-  { type: "tax", key: "tax_expires_on", label: "Road tax valid until" },
-  { type: "rc", key: "rc_expires_on", label: "RC valid until" },
-];
+const EMPTY_FORM: VehicleForm = { registration_number: "", make_model: "", capacity_tonnes: "", status: "available", current_location: "" };
 const statusLabel = (status: VehicleStatus) => status === "on_trip" ? "On trip" : status.charAt(0).toUpperCase() + status.slice(1);
-const documentStatus = (expiry: string) => { if (!expiry) return "active"; const today = new Date().toISOString().slice(0, 10); const warning = new Date(); warning.setDate(warning.getDate() + 30); const warningDate = warning.toISOString().slice(0, 10); return expiry < today ? "expired" : expiry <= warningDate ? "expiring" : "active"; };
 
 function VehicleDialog({ value, editing, saving, error, onChange, onClose, onSave }: { value: VehicleForm; editing: boolean; saving: boolean; error: string | null; onChange: (value: VehicleForm) => void; onClose: () => void; onSave: () => void }) {
   return <div className="vehicle-modal-layer"><button className="modal-backdrop" aria-label="Close vehicle editor" onClick={onClose} /><section className="vehicle-dialog" role="dialog" aria-modal="true" aria-labelledby="vehicle-title"><div className="vehicle-dialog-header"><div><span className="module-eyebrow"><Truck size={15} /> Fleet asset</span><h2 id="vehicle-title">{editing ? "Edit vehicle" : "Add vehicle"}</h2><p>{editing ? "Update this live database record." : "Register a vehicle in your workspace."}</p></div><button className="data-icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button></div><div className="vehicle-form-grid">
@@ -53,15 +36,12 @@ function VehicleDialog({ value, editing, saving, error, onChange, onClose, onSav
     <label><span>Capacity (tonnes)</span><input type="number" min="0" step="0.1" value={value.capacity_tonnes} onChange={(event) => onChange({ ...value, capacity_tonnes: event.target.value })} /></label>
     <label><span>Status</span><select value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as VehicleStatus })}><option value="available">Available</option><option value="on_trip">On trip</option><option value="maintenance">Maintenance</option><option value="inactive">Inactive</option></select></label>
     <label className="vehicle-form-wide"><span>Current location</span><input value={value.current_location} onChange={(event) => onChange({ ...value, current_location: event.target.value })} placeholder="Mumbai HQ" /></label>
-    <div className="vehicle-form-wide vehicle-document-heading"><strong>Document expiry dates</strong><span>Enter these once. Fleetora will create 30-day alerts automatically—no file upload required.</span></div>
-    {VEHICLE_DOCUMENT_FIELDS.map(field => <label key={field.type}><span>{field.label}</span><input type="date" value={String(value[field.key])} onChange={(event) => onChange({ ...value, [field.key]: event.target.value })} /></label>)}
   </div>{error && <div className="vehicle-form-error" role="alert">{error}</div>}<div className="vehicle-dialog-actions"><button className="module-button module-button-secondary" onClick={onClose}>Cancel</button><button className="module-button module-button-primary" disabled={saving || !value.registration_number.trim()} onClick={onSave}>{saving ? "Saving…" : editing ? "Save changes" : "Add vehicle"}</button></div></section></div>;
 }
 
 function FleetView() {
   const access = useAccess();
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([]);
-  const [documents, setDocuments] = useState<VehicleDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -71,7 +51,7 @@ function FleetView() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const load = useCallback(async () => { setLoading(true); setError(null); try { const [vehicleRows, documentRows] = await Promise.all([fleetoraApi<ApiVehicle[]>("/vehicles?limit=100"), fleetoraApi<VehicleDocument[]>("/documents")]); setVehicles(vehicleRows); setDocuments(documentRows); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load fleet records."); } finally { setLoading(false); } }, []);
+  const load = useCallback(async () => { setLoading(true); setError(null); try { setVehicles(await fleetoraApi<ApiVehicle[]>("/vehicles?limit=100")); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load fleet records."); } finally { setLoading(false); } }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void load();
@@ -85,8 +65,8 @@ function FleetView() {
     return () => window.clearTimeout(timer);
   }, [load]);
   function openNew() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setDialogOpen(true); }
-  function openEdit(vehicle: ApiVehicle) { const expiry = (type: VehicleDocumentType) => documents.find(document => document.vehicle_id === vehicle.id && document.document_type === type)?.expires_on ?? ""; setEditingId(vehicle.id); setForm({ registration_number: vehicle.registration_number, make_model: vehicle.make_model ?? "", capacity_tonnes: vehicle.capacity_tonnes === null ? "" : String(vehicle.capacity_tonnes), status: vehicle.status, current_location: vehicle.current_location ?? "", insurance_expires_on: expiry("insurance"), fitness_expires_on: expiry("fitness"), permit_expires_on: expiry("permit"), puc_expires_on: expiry("puc"), tax_expires_on: expiry("tax"), rc_expires_on: expiry("rc") }); setFormError(null); setDialogOpen(true); }
-  async function save() { setSaving(true); setFormError(null); const payload = { registration_number: form.registration_number.trim(), make_model: form.make_model.trim() || null, capacity_tonnes: form.capacity_tonnes ? Number(form.capacity_tonnes) : null, status: form.status, current_location: form.current_location.trim() || null }; try { const saved = await fleetoraApi<ApiVehicle[]>(editingId ? `/vehicles/${editingId}` : "/vehicles", { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) }); const vehicleId = editingId ?? saved[0]?.id; if (!vehicleId) throw new Error("Vehicle was saved, but its document reminders could not be linked."); await Promise.all(VEHICLE_DOCUMENT_FIELDS.map(async field => { const expiry = String(form[field.key] ?? ""); const existing = documents.find(document => document.vehicle_id === vehicleId && document.document_type === field.type); if (!expiry && !existing) return; const documentPayload = { vehicle_id: vehicleId, driver_id: null, document_type: field.type, expires_on: expiry || null, status: documentStatus(expiry) }; await fleetoraApi(existing ? `/documents/${existing.id}` : "/documents", { method: existing ? "PATCH" : "POST", body: JSON.stringify(documentPayload) }); })); setDialogOpen(false); await load(); } catch (cause) { setFormError(cause instanceof Error ? cause.message : "Could not save this vehicle."); } finally { setSaving(false); } }
+  function openEdit(vehicle: ApiVehicle) { setEditingId(vehicle.id); setForm({ registration_number: vehicle.registration_number, make_model: vehicle.make_model ?? "", capacity_tonnes: vehicle.capacity_tonnes === null ? "" : String(vehicle.capacity_tonnes), status: vehicle.status, current_location: vehicle.current_location ?? "" }); setFormError(null); setDialogOpen(true); }
+  async function save() { setSaving(true); setFormError(null); const payload = { registration_number: form.registration_number.trim(), make_model: form.make_model.trim() || null, capacity_tonnes: form.capacity_tonnes ? Number(form.capacity_tonnes) : null, status: form.status, current_location: form.current_location.trim() || null }; try { await fleetoraApi(editingId ? `/vehicles/${editingId}` : "/vehicles", { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) }); setDialogOpen(false); await load(); } catch (cause) { setFormError(cause instanceof Error ? cause.message : "Could not save this vehicle."); } finally { setSaving(false); } }
   async function remove(vehicle: ApiVehicle) { if (!window.confirm(`Delete vehicle “${vehicle.registration_number}”? Linked trips will keep their history but the vehicle assignment will be cleared.`)) return; try { await fleetoraApi(`/vehicles/${vehicle.id}`, { method: "DELETE" }); await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not delete this vehicle."); } }
   const visible = useMemo(() => vehicles.filter((vehicle) => Object.values(vehicle).some((value) => String(value ?? "").toLowerCase().includes(query.toLowerCase()))), [query, vehicles]);
   const available = vehicles.filter((vehicle) => vehicle.status === "available").length;
