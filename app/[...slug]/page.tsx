@@ -30,6 +30,7 @@ const appRoutes = new Set([
   "invoices",
   "documents",
   "reports",
+  "ai-assistant",
   "analytics",
   "notifications",
   "companies",
