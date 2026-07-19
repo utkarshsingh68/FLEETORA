@@ -2427,6 +2427,303 @@
   justify-self: end;
   text-align: right;
 }
+
+/* Landing page responsiveness */
+@media (max-width: 1040px) {
+  .landing-menu-button {
+    display: grid;
+    flex: 0 0 auto;
+  }
+
+  .landing-nav {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    left: 0;
+    z-index: 90;
+    display: none;
+    max-height: calc(100vh - 96px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    overflow-y: auto;
+    border: 1px solid var(--fleet-line);
+    border-radius: 16px;
+    padding: 18px;
+    background: rgb(255 255 255 / 0.98);
+    box-shadow: var(--fleet-shadow-md);
+  }
+
+  .landing-nav--open {
+    display: flex;
+  }
+
+  .landing-nav-links,
+  .landing-nav-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .landing-nav-links a,
+  .landing-login-link {
+    width: 100%;
+    border-radius: 9px;
+    padding: 11px 12px;
+  }
+
+  .landing-nav-links a:hover,
+  .landing-login-link:hover {
+    background: var(--fleet-blue-50);
+  }
+
+  .landing-nav-links a::after {
+    display: none;
+  }
+
+  .landing-nav-actions .landing-button {
+    width: 100%;
+  }
+
+  .hero-layout,
+  .workflow-layout,
+  .feature-control-layout,
+  .faq-layout,
+  .landing-footer-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-content {
+    max-width: 760px;
+  }
+
+  .hero-visual-wrap {
+    width: min(100%, 720px);
+    margin-inline: auto;
+  }
+
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-layout,
+  .feature-control-layout,
+  .faq-layout {
+    gap: 54px;
+  }
+
+  .feature-control-panel {
+    width: min(100%, 700px);
+    margin-inline: auto;
+  }
+
+  .faq-intro {
+    position: static;
+  }
+
+  .landing-testimonial-grid,
+  .pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-footer-main {
+    gap: 42px;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-container {
+    width: min(100% - 32px, 1200px);
+  }
+
+  .landing-header {
+    height: 68px;
+  }
+
+  .hero-section {
+    padding: 54px 0 68px;
+  }
+
+  .hero-layout {
+    gap: 44px;
+  }
+
+  .hero-content h1 {
+    font-size: clamp(2.55rem, 12vw, 3.65rem);
+    letter-spacing: -0.052em;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .hero-description {
+    margin-top: 22px;
+    line-height: 1.65;
+  }
+
+  .hero-operations {
+    min-height: 470px;
+  }
+
+  .hero-operations-window {
+    right: 0;
+    left: 0;
+  }
+
+  .hero-floating-card--profit {
+    left: 8px;
+  }
+
+  .hero-floating-card--alert {
+    right: 8px;
+  }
+
+  .landing-logo-cloud {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 18px;
+  }
+
+  .landing-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feature-section,
+  .workflow-section,
+  .feature-control-section,
+  .landing-testimonials,
+  .pricing-section,
+  .faq-section,
+  .landing-cta-section {
+    padding: 72px 0;
+  }
+
+  .feature-grid,
+  .landing-testimonial-grid,
+  .pricing-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workflow-layout,
+  .feature-control-layout,
+  .faq-layout {
+    gap: 42px;
+  }
+
+  .landing-footer-bottom {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .landing-footer-made {
+    justify-self: start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-container {
+    width: min(100% - 24px, 1200px);
+  }
+
+  .landing-brand {
+    gap: 8px;
+  }
+
+  .landing-brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .landing-brand-name {
+    font-size: 1.12rem;
+  }
+
+  .landing-nav {
+    right: -2px;
+    left: -2px;
+  }
+
+  .hero-eyebrow {
+    max-width: 100%;
+    align-items: flex-start;
+    border-radius: 14px;
+    line-height: 1.35;
+  }
+
+  .hero-content h1 {
+    font-size: clamp(2.35rem, 12.5vw, 3rem);
+  }
+
+  .hero-actions,
+  .landing-cta-actions {
+    flex-direction: column;
+  }
+
+  .hero-actions .landing-button,
+  .landing-cta-actions .landing-button {
+    width: 100%;
+  }
+
+  .hero-assurances {
+    display: grid;
+    gap: 10px;
+  }
+
+  .hero-operations {
+    min-height: 410px;
+  }
+
+  .hero-operations::before {
+    inset: 52px 5px 25px;
+  }
+
+  .hero-operations-window {
+    top: 52px;
+    bottom: 30px;
+  }
+
+  .hero-window-content {
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .hero-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-kpi:nth-child(2) {
+    display: none;
+  }
+
+  .hero-floating-card {
+    max-width: calc(100% - 16px);
+    padding: 8px 9px;
+  }
+
+  .hero-floating-card--profit {
+    top: 0;
+  }
+
+  .hero-floating-card--alert {
+    bottom: 0;
+  }
+
+  .landing-stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-footer-main {
+    padding: 52px 0 42px;
+  }
+
+  .landing-footer-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 34px 22px;
+  }
+
+  .landing-footer-bottom > div {
+    flex-wrap: wrap;
+  }
+}
 /* Authentication */
 .auth-page {
   position: relative;
