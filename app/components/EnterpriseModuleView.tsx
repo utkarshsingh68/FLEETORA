@@ -17,6 +17,7 @@ const moduleNames: Record<string, string> = {
   batteries: "Battery management",
   "digital-lr": "Digital LR",
   invoices: "Invoices",
+  documents: "Vehicle document control",
   expenses: "Expense management",
   income: "Income management",
   analytics: "Analytics studio",
